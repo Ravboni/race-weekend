@@ -1123,6 +1123,24 @@ function focusables() {
     .filter((node) => !node.disabled && !node.closest("[hidden]") && node.getClientRects().length > 0);
 }
 
+function revealFocusTarget(target) {
+  const main = document.getElementById("main-content");
+  target.scrollIntoView({ block: "nearest", inline: "nearest" });
+  if (!main.contains(target)) return;
+
+  // Some webOS builds ignore scroll-padding when scrollIntoView uses "nearest".
+  // Correct the main scroller explicitly so focused content stays below tabs.
+  const viewport = main.getBoundingClientRect();
+  const rect = target.getBoundingClientRect();
+  const safeTop = viewport.top + 40;
+  const safeBottom = viewport.bottom - 24;
+  if (rect.top < safeTop) {
+    main.scrollTop -= safeTop - rect.top;
+  } else if (rect.bottom > safeBottom) {
+    main.scrollTop += rect.bottom - safeBottom;
+  }
+}
+
 function nearestCardInSection(section, reference) {
   const cards = [...(section?.querySelectorAll(".content-card") || [])];
   if (!cards.length) return null;
@@ -1169,7 +1187,7 @@ function moveHomeBetweenRows(event, key, current) {
   event.preventDefault();
   target.focus({ preventScroll: true });
   if (target.closest("#hero")) main.scrollTop = 0;
-  else target.scrollIntoView({ block: "nearest", inline: "nearest" });
+  else revealFocusTarget(target);
   return true;
 }
 
@@ -1200,7 +1218,7 @@ function moveFocus(event, key = event.key) {
   if (!items.includes(current)) {
     event.preventDefault();
     items[0].focus();
-    items[0].scrollIntoView({ block: "nearest", inline: "nearest" });
+    revealFocusTarget(items[0]);
     return true;
   }
   const currentRect = current.getBoundingClientRect();
@@ -1231,7 +1249,7 @@ function moveFocus(event, key = event.key) {
       // Restore the home scroll origin when D-pad focus returns to the hero.
       document.getElementById("main-content").scrollTop = 0;
     } else {
-      best.scrollIntoView({ block: "nearest", inline: "nearest" });
+      revealFocusTarget(best);
     }
   }
   return true;
