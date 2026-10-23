@@ -1,33 +1,62 @@
-# F1 TV for webOS (unofficial)
+# F1 TV for webOS
 
-An experimental client for rooted LG webOS televisions, starting with the LG C2. This project is not affiliated with or endorsed by Formula 1, F1 TV, or Liberty Media.
+An unofficial F1 TV client for LG webOS televisions. The app was developed and verified on a rooted LG C2 running webOS 11.2.0. It is not affiliated with or endorsed by Formula 1, F1 TV, or Liberty Media.
 
-## Status
+> **Experimental software:** F1 can change its services, playback API, account flow, and DRM requirements at any time. A working subscription is required. Compatibility with other TV models and firmware versions has not been verified.
 
-The app reads F1 TV's menu and catalogue feeds into its own webOS home, sections, and detail screens. Version 0.16.15 aligns content-row spacing to the Android TV reference: 20dp between a section heading and its cards, and 40dp from the end of each card to the next heading, including the 12dp focus gutter. The focus gutter is reduced from 48dp to 12dp on each vertical edge, with a softer focus glow that stays inside the gutter. Version 0.16.13 removes the top-bar divider and opaque surface so the app uses one continuous background, and applies 24dp top and 48dp horizontal navigation insets. Version 0.16.12 uses explicit home-screen D-pad row transitions: the tab bar moves down to the carousel, the carousel moves down to the first content row, and each content row moves only to its adjacent row. Version 0.16.11 explicitly returns D-pad Up from the first content row to the featured carousel and resets the home scroll position so the complete card is visible. Version 0.16.9 replaces the immersive home hero with an Android TV featured card carousel: a 316dp-high card, 288dp text block, 32dp inner spacing, and 58dp safe margins mapped to the app's 1920×1080 CSS viewport at 2px per dp. It keeps a cinematic scrim, a single primary action, an overline, two-line-clamped title and description, paged indicators, automatic rotation, pause-on-focus, and D-pad slide navigation. Version 0.16.8 maps Android TV's 960×540dp layout grid to the app's 1920×1080 CSS viewport: 58dp safe margins, a 12-column grid with 52dp columns and 20dp gutters, and consistent TV-scale typography, controls, and spacing across home, search, details, playback, and dialogs. Version 0.16.7 centers the navigation without the F1 TV wordmark, uses a large account icon for sign-in or sign-out, and confirms before signing out. Version 0.16.6 hides the Shows and Documentaries destinations from the main menu while leaving them available through catalogue search. Version 0.16.5 maps Android TV's tab dimensions to CSS pixels: 64px pill height, 32px horizontal padding and text, and 32px gaps between destinations. Version 0.16.4 uses the Android TV four-card layout at 392px per card with 40px gutters and centered 32px title and 28px subtitle text. Title and subtitle each wrap to at most two lines, stay within the thumbnail width, and end with an ellipsis when truncated. Expanded scroll gutters preserve the focused card's white edge and red glow at rail and screen edges; pressed cards have a 6px muted gray edge. Version 0.15.0 removed focus outline rings from non-card controls, using scale, surface color, and elevation to show focus and selection. Version 0.14.0 added an immersive featured carousel with a cinematic image scrim, overline/title/description/action content block, bottom-end pagination dots, 5-second rotation, pause-on-focus, and D-pad slide navigation. Version 0.13.3 introduced pill tabs for the top level page destinations, with a translucent red selection and scale/surface focus state without an outline ring or underline. Version 0.12.0 separated video feed selection from audio and subtitles, added subtitle track controls when a feed provides them, and used webOS history for predictable remote Back behavior through playback panels and controls. The app also supports catalogue search, phone pairing, an encrypted on-device session store, live session feed selection, and an in-app DASH/Widevine player with full-screen and live-window controls. Playback and navigation have been verified on an LG C2 running webOS 11.2.0. It uses the account's own F1 subscription and the TV's Widevine pipeline. It does not decrypt, record, or redistribute protected streams.
+## Install
 
-## Development
+The easiest option is to download the latest `.ipk` from [GitHub Releases](https://github.com/Ravboni/f1tv-webos/releases/latest) and install it with [webOS Dev Manager](https://github.com/webosbrew/dev-manager-desktop/releases/latest). See the step-by-step [installation guide](docs/INSTALL.md) for rooted TVs and Developer Mode TVs, plus command-line instructions.
 
-The app is a standard webOS TV web app. Install LG's current webOS CLI, register your TV as a device, then package and install the project with the CLI:
+After installation, open **F1 TV** from the TV's launcher and pair it with your F1 account using the on-screen code and URL.
+
+## Features
+
+- Browse F1 TV's home page, live events, archive, search, and video details.
+- Sign in using F1 TV's phone-pairing flow.
+- Watch entitled live and replay streams through the TV's own webOS media and DRM support.
+- Choose available live feeds (such as F1 Live, International, tracker, data, or onboard cameras) independently from audio and subtitle tracks.
+- Use the TV remote for navigation, feed and audio selection, playback controls, and seeking.
+- Display a 4K-friendly TV layout with large cards, Roboto typography, and D-pad focus states.
+
+Available feeds, languages, subtitles, and replay playback depend on what F1 returns for the event, account, and region.
+
+## Build from source
+
+Requirements: Node.js 20 or newer and npm. Install LG's webOS CLI, then package the app:
 
 ```sh
-ares-package .
-ares-install -d <device-name> com.ravboni.f1tv.webos_0.6.0_all.ipk
+npm install --global @webos-tools/cli
+git clone https://github.com/Ravboni/f1tv-webos.git
+cd f1tv-webos
+./scripts/package.sh
 ```
 
-On a rooted TV, Homebrew Channel / Device Manager can also be used to install a built IPK. Keep the TV's developer or homebrew installation instructions specific to your firmware.
+The installable package is written to `dist/`. For TV setup and installation, follow the CLI section in [docs/INSTALL.md](docs/INSTALL.md).
 
-## Reverse-engineering notes
+## Account and privacy
 
-The Android TV application cannot run directly on webOS. This client uses F1 TV's menu, page, video, phone authorization, entitlement, and playback APIs. The signed-in subscription token is encrypted in IndexedDB with a non-exportable WebCrypto key. Playback licenses are requested by dash.js through the TV's Encrypted Media Extensions implementation. Authentication tokens, signed stream URLs, DRM challenges, and license responses must remain on the TV and must not be committed to this repository.
+The app uses the signed-in user's own F1 TV subscription and entitlement. Its session is encrypted locally on the TV using IndexedDB, AES-GCM, and a non-exportable WebCrypto key. Authentication tokens, signed stream URLs, DRM challenges, and license responses should stay on the TV and must not be included in bug reports or commits. The app does not decrypt, record, or redistribute protected media.
 
-## Third-party software
+## Known limitations
 
-The bundled dash.js 4.7.4 player is distributed under the BSD 3-Clause license. The QR code generator is MIT licensed. Their license texts are included in `vendor/`.
+- F1's APIs and playback behavior can change without notice.
+- A feed or replay may be unavailable because of subscription tier, region, event, or rights restrictions.
+- Some replay responses have no usable Widevine metadata, while others require DRM capabilities that vary by TV firmware. Playback is therefore not guaranteed for every archive item.
+- The LG C2 on webOS 11.2.0 is the only device configuration verified so far.
+
+## Project and third-party licenses
+
+No project-wide license is declared for this repository. The bundled dash.js and QR-code libraries retain their own licenses and notices in [`vendor/`](vendor/); the bundled Roboto font is covered by [`assets/fonts/OFL.txt`](assets/fonts/OFL.txt).
+
+## Technical notes
+
+See [docs/official-player-notes.md](docs/official-player-notes.md) for non-secret observations about F1's catalogue, sign-in, and playback flows. The notes intentionally exclude account tokens, signed URLs, DRM challenges, and license responses.
 
 ## References
 
 - [F1 TV supported devices](https://f1help.formula1.com/article/Supported-devices)
 - [LG webOS streaming and DRM support](https://webostv.developer.lge.com/develop/specifications/streaming-protocol-drm)
 - [LG webOS DRM content playback](https://webostv.developer.lge.com/develop/guides/drm-content-playback)
+- [LG webOS CLI installation](https://webostv.developer.lge.com/develop/tools/cli-installation)
 - [webOS Homebrew](https://www.webosbrew.org/)
