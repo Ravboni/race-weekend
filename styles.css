@@ -570,6 +570,71 @@ button:focus, input:focus, select:focus, textarea:focus { outline: none; }
   filter: brightness(1.12) saturate(1.08);
   box-shadow: 0 14px 30px rgba(0,0,0,.5), 0 4px 18px rgba(237,20,59,.18);
 }
+
+/* Center the main destinations and give the account action a clear icon target. */
+.topbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+}
+.primary-nav {
+  grid-column: 2;
+  justify-self: center;
+  flex: 0 1 auto;
+  width: max-content;
+  max-width: calc(100vw - 360px);
+  justify-content: center;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.primary-nav::-webkit-scrollbar { display: none; }
+.profile-chip {
+  grid-column: 3;
+  justify-self: end;
+  display: grid;
+  width: 80px;
+  height: 80px;
+  min-height: 80px;
+  place-items: center;
+  padding: 8px;
+  border-radius: 50%;
+}
+.profile-avatar {
+  display: grid;
+  width: 64px;
+  height: 64px;
+  place-items: center;
+  border-color: rgba(255,255,255,.24);
+}
+.profile-avatar svg {
+  width: 38px;
+  height: 38px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 3;
+}
+.sign-out-dialog { z-index: 21; }
+.sign-out-card { width: min(820px, 82vw); padding: 56px; }
+.sign-out-card h2 { max-width: 680px; margin: 0 auto; font-size: 42px; line-height: 1.2; }
+.sign-out-actions { display: flex; justify-content: center; gap: 24px; margin-top: 38px; }
+.sign-out-actions .button { min-width: 220px; min-height: 72px; margin-top: 0; font-size: 22px; }
+
+@media (max-width: 1250px) {
+  .topbar { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
+  .primary-nav { max-width: calc(100vw - 180px); gap: 12px; }
+  .nav-button { min-height: 44px; padding: 10px 12px; font-size: 14px; line-height: 20px; }
+  .profile-chip { width: 60px; height: 60px; min-height: 60px; padding: 4px; }
+  .profile-avatar { width: 52px; height: 52px; }
+  .profile-avatar svg { width: 32px; height: 32px; }
+}
+
+@media (min-width: 1600px) {
+  .nav-button { min-height: 64px; padding: 12px 32px; font-size: 32px; line-height: 40px; }
+  .profile-chip { width: 80px; height: 80px; min-height: 80px; padding: 8px; }
+  .profile-avatar { width: 64px; height: 64px; }
+  .profile-avatar svg { width: 38px; height: 38px; }
+}
 .content-card:focus .content-card-image::after {
   border-color: transparent;
   background: linear-gradient(145deg, rgba(237,20,59,.2), transparent 68%);

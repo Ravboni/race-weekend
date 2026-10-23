@@ -29,6 +29,7 @@ const state = {
   playerPanel: null,
   playerOverlay: false,
   signInReturnFocus: null,
+  signOutReturnFocus: null,
   pendingSeekValue: null,
 };
 
@@ -703,10 +704,11 @@ function openPlayerOptions() {
 
 function handleAppPopState(event) {
   const destination = event.state;
+  if (!document.getElementById("sign-out-dialog").hidden && destination?.modal !== "logout") closeSignOutConfirmation({ fromHistory: true });
+  if (!document.getElementById("sign-in-dialog").hidden && destination?.modal !== "signin") closeSignIn({ fromHistory: true });
   if (!destination?.f1tv) return;
   const previousView = state.currentView;
   const previousPanel = state.playerPanel;
-  if (!destination.modal && !document.getElementById("sign-in-dialog").hidden) closeSignIn({ fromHistory: true });
   if (previousView === "player" && destination.screen !== "player") stopPlayback();
   setView(destination.screen || "home", { pushHistory: false });
   if (destination.screen === "player" && destination.panel) {
@@ -787,8 +789,52 @@ function playSelected() {
 }
 
 function setAccountLabel() {
-  const label = document.getElementById("account-label");
-  label.textContent = state.session?.signedIn ? "F1 TV · Signed in" : "Sign in";
+  const signedIn = Boolean(state.session?.signedIn);
+  const button = document.getElementById("account-button");
+  const label = signedIn ? "Log out of F1 TV" : "Sign in to F1 TV";
+  button.setAttribute("aria-label", label);
+  button.title = label;
+  button.dataset.signedIn = String(signedIn);
+}
+
+function closeSignOutConfirmation({ fromHistory = false } = {}) {
+  const dialog = document.getElementById("sign-out-dialog");
+  if (dialog.hidden) return;
+  if (!fromHistory && window.history.state?.f1tv && window.history.state.modal === "logout") {
+    const { modal, ...pageState } = window.history.state;
+    window.history.replaceState(pageState, "", window.location.href);
+  }
+  dialog.hidden = true;
+  const returnFocus = state.signOutReturnFocus;
+  state.signOutReturnFocus = null;
+  if (returnFocus && !returnFocus.closest("[hidden]") && returnFocus.getClientRects().length) returnFocus.focus();
+  else if (!fromHistory) document.getElementById("account-button").focus();
+}
+
+function openSignOutConfirmation() {
+  const dialog = document.getElementById("sign-out-dialog");
+  state.signOutReturnFocus = document.activeElement;
+  const current = window.history.state?.f1tv ? window.history.state : { f1tv: true, screen: state.currentView };
+  window.history.pushState({ ...current, modal: "logout" }, "", window.location.href);
+  dialog.hidden = false;
+  document.getElementById("sign-out-cancel").focus();
+}
+
+async function confirmSignOut() {
+  const confirm = document.getElementById("sign-out-confirm");
+  confirm.disabled = true;
+  confirm.textContent = "Logging out…";
+  try {
+    await state.session.signOut();
+    closeSignOutConfirmation();
+    setAccountLabel();
+    showToast("Signed out of F1 TV on this TV.");
+  } catch (error) {
+    showToast(error.message || "Could not sign out of F1 TV.");
+  } finally {
+    confirm.disabled = false;
+    confirm.textContent = "Log out";
+  }
 }
 
 function closeSignIn({ fromHistory = false, navigate = true } = {}) {
@@ -1060,6 +1106,8 @@ function goLive() {
 }
 
 function focusScope() {
+  const signOutDialog = document.getElementById("sign-out-dialog");
+  if (!signOutDialog.hidden) return signOutDialog;
   const signInDialog = document.getElementById("sign-in-dialog");
   if (!signInDialog.hidden) return signInDialog;
   const playerView = document.getElementById("player-view");
@@ -1126,6 +1174,15 @@ function onRemoteKey(event) {
     37: "ArrowLeft", 38: "ArrowUp", 39: "ArrowRight", 40: "ArrowDown",
   }[event.keyCode] || ({ Left: "ArrowLeft", Up: "ArrowUp", Right: "ArrowRight", Down: "ArrowDown" }[event.key] || event.key));
   const editingText = document.activeElement.matches?.("input:not([type='range']), textarea, [contenteditable='true']");
+  if (!document.getElementById("sign-out-dialog").hidden) {
+    if (key === "Escape" || key === "Back" || (key === "Backspace" && !editingText) || event.keyCode === 461) {
+      event.preventDefault();
+      closeSignOutConfirmation();
+    } else {
+      moveFocus(event, key);
+    }
+    return;
+  }
   if (document.getElementById("sign-in-dialog") && !document.getElementById("sign-in-dialog").hidden) {
     if (key === "Escape" || key === "Back" || (key === "Backspace" && !editingText) || event.keyCode === 461) {
       event.preventDefault();
@@ -1222,9 +1279,11 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   document.getElementById("player-scrubber").addEventListener("blur", cancelPendingSeek);
   document.getElementById("sign-in-cancel").addEventListener("click", closeSignIn);
+  document.getElementById("sign-out-cancel").addEventListener("click", () => closeSignOutConfirmation());
+  document.getElementById("sign-out-confirm").addEventListener("click", confirmSignOut);
   document.getElementById("account-button").addEventListener("click", () => {
     if (state.session?.signedIn) {
-      state.session.signOut().then(() => { setAccountLabel(); showToast("Signed out of F1 TV on this TV."); }).catch((error) => showToast(error.message));
+      openSignOutConfirmation();
     } else if (!state.session?.signedIn) beginSignIn();
   });
   document.getElementById("retry-button").addEventListener("click", loadHome);

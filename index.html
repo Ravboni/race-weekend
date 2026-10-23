@@ -6,21 +6,21 @@
     <meta name="color-scheme" content="dark">
     <meta name="theme-color" content="#090a0e">
     <title>F1 TV</title>
-    <link rel="stylesheet" href="styles.css?v=0.16.6">
+    <link rel="stylesheet" href="styles.css?v=0.16.7">
     <script defer src="vendor/dash.all.min.js"></script>
     <script defer src="vendor/qrcode.js"></script>
     <script defer src="auth.js"></script>
-    <script defer src="app.js?v=0.16.6"></script>
+    <script defer src="app.js?v=0.16.7"></script>
   </head>
   <body>
     <div class="app-shell">
       <header class="topbar">
-        <div class="brand" aria-label="F1 TV home">
-          <span class="brand-mark" aria-hidden="true">F1</span>
-          <span class="brand-name">TV</span>
-        </div>
         <nav id="primary-nav" class="primary-nav" aria-label="F1 TV sections"></nav>
-        <button id="account-button" class="profile-chip focusable" type="button"><span class="profile-avatar">J</span><span id="account-label">F1 TV</span></button>
+        <button id="account-button" class="profile-chip focusable" type="button" aria-label="F1 TV account">
+          <span class="profile-avatar" aria-hidden="true">
+            <svg viewBox="0 0 48 48" focusable="false"><circle cx="24" cy="16" r="8"></circle><path d="M8 41c2.5-8 7.8-12 16-12s13.5 4 16 12"></path></svg>
+          </span>
+        </button>
       </header>
 
       <main id="main-content" class="main-content">
@@ -113,6 +113,17 @@
           <p id="pairing-code" class="pairing-code" hidden></p>
           <p id="pairing-status" class="pairing-status">Starting secure sign-in…</p>
           <button id="sign-in-cancel" class="button button-secondary focusable" type="button">Cancel</button>
+        </div>
+      </section>
+      <section id="sign-out-dialog" class="sign-in-dialog sign-out-dialog" role="dialog" aria-modal="true" aria-labelledby="sign-out-title" hidden>
+        <div class="sign-in-card sign-out-card">
+          <p class="detail-eyebrow">F1 TV ACCOUNT</p>
+          <h2 id="sign-out-title">Are you sure you want to log out?</h2>
+          <p>You can sign in again at any time.</p>
+          <div class="sign-out-actions">
+            <button id="sign-out-cancel" class="button button-secondary focusable" type="button">Cancel</button>
+            <button id="sign-out-confirm" class="button button-primary focusable" type="button">Log out</button>
+          </div>
         </div>
       </section>
     </div>
