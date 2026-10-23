@@ -7,7 +7,7 @@
 <p align="center">An unofficial, remote-friendly way to watch F1 TV on LG webOS.</p>
 
 <p align="center">
-  <a href="https://github.com/Ravboni/f1tv-webos/releases/latest">Download the latest release</a>
+  <a href="https://github.com/Ravboni/race-weekend-viewer/releases/latest">Download the latest release</a>
   ·
   <a href="docs/INSTALL.md">Installation guide</a>
 </p>
@@ -20,7 +20,7 @@
 
 | | |
 | --- | --- |
-| Current release | [0.16.24](https://github.com/Ravboni/f1tv-webos/releases/tag/v0.16.24) |
+| Current release | [0.16.24](https://github.com/Ravboni/race-weekend-viewer/releases/tag/v0.16.24) |
 | Verified device | LG C2, webOS 11.2.0 |
 | Install package | `.ipk` from GitHub Releases |
 | TV setup | Rooted or Developer Mode |
@@ -30,7 +30,7 @@ The C2 is the only tested model. Other LG webOS TVs may work, but have not been 
 
 ## Install on your TV
 
-1. Download the `.ipk` from [the latest release](https://github.com/Ravboni/f1tv-webos/releases/latest).
+1. Download the `.ipk` from [the latest release](https://github.com/Ravboni/race-weekend-viewer/releases/latest).
 2. Install it using [webOS Dev Manager](https://github.com/webosbrew/dev-manager-desktop/releases/latest) or LG's webOS CLI.
 3. Open **Race Weekend Viewer** on the TV and follow the on-screen phone-pairing steps for your F1 TV account.
 
@@ -71,7 +71,7 @@ Requirements: Node.js 20 or newer, npm, and the [webOS CLI](https://webostv.deve
 
 ```sh
 npm install --global @webos-tools/cli
-git clone https://github.com/Ravboni/f1tv-webos.git
+git clone https://github.com/Ravboni/race-weekend-viewer.git
 cd f1tv-webos
 ./scripts/package.sh
 ```
