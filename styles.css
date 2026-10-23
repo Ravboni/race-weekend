@@ -87,7 +87,7 @@ button { color: inherit; font: inherit; }
 .toast { position: fixed; z-index: 10; right: 40px; bottom: 35px; max-width: 500px; padding: 13px 18px; border: 1px solid #44454d; border-radius: 4px; background: #1d1e23; color: #eeeef2; font-size: 12px; opacity: 0; pointer-events: none; transform: translateY(12px); transition: opacity .2s ease, transform .2s ease; }
 .toast.visible { opacity: 1; transform: translateY(0); }
 
-.player-view { position: absolute; z-index: 6; inset: 0; overflow: hidden; background: #000; }
+.player-view { position: fixed; z-index: 15; inset: 0; overflow: hidden; background: #000; }
 .player-video { position: absolute; inset: 0; width: 100%; height: 100%; background: #000; object-fit: contain; }
 .player-chrome { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: space-between; padding: 35px 5.2vw 55px; background: linear-gradient(180deg,rgba(0,0,0,.72),transparent 30%,transparent 60%,rgba(0,0,0,.72)); opacity: 1; transition: opacity .25s ease; }
 .player-chrome.is-hidden { opacity: 0; pointer-events: none; }
@@ -96,6 +96,8 @@ button { color: inherit; font: inherit; }
 .player-live-dot { width: 8px; height: 8px; border-radius: 50%; background: #ed143b; box-shadow: 0 0 12px #ed143b; }
 .player-chrome h1 { margin: 4px 0 20px; color: #fff; font-size: 31px; }
 .player-controls { display: flex; gap: 12px; }
+.player-timeline { display: flex; align-items: center; gap: 18px; margin-top: 15px; color: #fff; font-size: 12px; font-variant-numeric: tabular-nums; }
+.player-timeline input { width: min(720px, 68vw); height: 8px; accent-color: #e10628; cursor: pointer; }
 .player-error { position: absolute; inset: 20% 15%; display: flex; align-items: center; justify-content: center; padding: 40px; border: 1px solid #37383e; background: rgba(8,9,12,.94); color: #fff; font-size: 20px; line-height: 1.5; text-align: center; }
 .sign-in-dialog { position: fixed; z-index: 20; inset: 0; display: flex; align-items: center; justify-content: center; padding: 30px; background: rgba(0,0,0,.75); }
 .sign-in-card { width: min(540px, 80vw); padding: 36px; border: 1px solid #44454d; border-radius: 8px; background: #17181d; text-align: center; box-shadow: 0 22px 80px rgba(0,0,0,.6); }

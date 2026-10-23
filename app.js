@@ -16,6 +16,8 @@ const state = {
   dashPlayer: null,
   pairingTimer: null,
   playerTimer: null,
+  timelineTimer: null,
+  playerLive: false,
 };
 
 function element(tagName, className, text) {
@@ -425,6 +427,9 @@ async function startPlayback(item) {
   stopPlayback();
   document.getElementById("player-title").textContent = title;
   document.getElementById("player-error").hidden = true;
+  state.playerLive = item.metadata?.contentSubtype === "LIVE" || item.metadata?.isLive === true;
+  document.getElementById("player-live").hidden = !state.playerLive;
+  document.getElementById("player-time").textContent = state.playerLive ? "LIVE" : "--:-- / --:--";
   status.textContent = "Requesting your F1 TV stream…";
   setView("player");
   try {
@@ -445,14 +450,21 @@ async function startPlayback(item) {
     player.on(window.dashjs.MediaPlayer.events.STREAM_INITIALIZED, () => {
       status.textContent = "Playing on F1 TV";
       video.play().catch(() => {});
+      updateTimeline();
     });
     player.on(window.dashjs.MediaPlayer.events.PLAYBACK_ERROR, () => {
       showPlayerError("F1 TV could not play this stream on the TV. Check the connection, subscription, and Widevine playback support.");
     });
     video.onplaying = () => { status.textContent = "Playing on F1 TV"; };
     video.onwaiting = () => { status.textContent = "Buffering…"; };
+    video.onplay = () => { document.getElementById("player-toggle").textContent = "Pause"; };
+    video.onpause = () => { document.getElementById("player-toggle").textContent = "Play"; };
+    video.ontimeupdate = updateTimeline;
+    video.onprogress = updateTimeline;
     player.initialize(video, stream.manifest, true);
     document.getElementById("player-back").focus();
+    window.clearInterval(state.timelineTimer);
+    state.timelineTimer = window.setInterval(updateTimeline, 1000);
     state.playerTimer = window.setTimeout(() => document.querySelector(".player-chrome")?.classList.add("is-hidden"), 5000);
   } catch (error) {
     showPlayerError(error.message || "Could not start F1 TV playback.");
@@ -468,7 +480,9 @@ function showPlayerError(message) {
 
 function stopPlayback() {
   window.clearTimeout(state.playerTimer);
+  window.clearInterval(state.timelineTimer);
   state.playerTimer = null;
+  state.timelineTimer = null;
   if (state.dashPlayer) {
     try { state.dashPlayer.reset(); } catch (_error) {}
     state.dashPlayer = null;
@@ -479,6 +493,65 @@ function stopPlayback() {
     video.removeAttribute("src");
     video.load();
   }
+  state.playerLive = false;
+}
+
+function formatTime(seconds) {
+  if (!Number.isFinite(seconds) || seconds < 0) return "--:--";
+  const whole = Math.floor(seconds);
+  const hours = Math.floor(whole / 3600);
+  const minutes = Math.floor((whole % 3600) / 60);
+  const remainder = whole % 60;
+  return hours ? `${hours}:${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}` : `${minutes}:${String(remainder).padStart(2, "0")}`;
+}
+
+function timelineRange(video) {
+  if (video.seekable?.length) {
+    return { start: video.seekable.start(0), end: video.seekable.end(video.seekable.length - 1) };
+  }
+  if (Number.isFinite(video.duration) && video.duration > 0) return { start: 0, end: video.duration };
+  return null;
+}
+
+function updateTimeline() {
+  const video = document.getElementById("player-video");
+  const scrubber = document.getElementById("player-scrubber");
+  const label = document.getElementById("player-time");
+  const liveButton = document.getElementById("player-live");
+  if (!video || !scrubber || !label) return;
+  const range = timelineRange(video);
+  if (!range || range.end <= range.start) {
+    scrubber.disabled = true;
+    label.textContent = state.playerLive ? "LIVE" : "--:-- / --:--";
+    return;
+  }
+  scrubber.disabled = false;
+  const fraction = Math.max(0, Math.min(1, (video.currentTime - range.start) / (range.end - range.start)));
+  scrubber.value = String(Math.round(fraction * 1000));
+  liveButton.hidden = !state.playerLive;
+  if (state.playerLive) {
+    const behind = Math.max(0, range.end - video.currentTime);
+    label.textContent = behind > 5 ? `LIVE  −${formatTime(behind)}` : "LIVE";
+  } else {
+    label.textContent = `${formatTime(video.currentTime)} / ${formatTime(video.duration)}`;
+  }
+}
+
+function seekScrubber() {
+  const video = document.getElementById("player-video");
+  const range = timelineRange(video);
+  if (!range) return;
+  const fraction = Number(document.getElementById("player-scrubber").value) / 1000;
+  video.currentTime = range.start + (range.end - range.start) * fraction;
+  updateTimeline();
+}
+
+function goLive() {
+  const video = document.getElementById("player-video");
+  const range = timelineRange(video);
+  if (!range) return;
+  video.currentTime = Math.max(range.start, range.end - 1.5);
+  updateTimeline();
 }
 
 function focusables() {
@@ -570,6 +643,8 @@ document.addEventListener("DOMContentLoaded", () => {
     video.muted = !video.muted;
     document.getElementById("player-mute").textContent = video.muted ? "Unmute" : "Mute";
   });
+  document.getElementById("player-live").addEventListener("click", goLive);
+  document.getElementById("player-scrubber").addEventListener("change", seekScrubber);
   document.getElementById("sign-in-cancel").addEventListener("click", closeSignIn);
   document.getElementById("account-button").addEventListener("click", () => {
     if (state.session?.signedIn) {
