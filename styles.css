@@ -110,6 +110,22 @@ button { color: inherit; font: inherit; }
 .player-live-dot { width: 8px; height: 8px; border-radius: 50%; background: #ed143b; box-shadow: 0 0 12px #ed143b; }
 .player-chrome h1 { margin: 4px 0 20px; color: #fff; font-size: 31px; }
 .player-controls { display: flex; gap: 12px; }
+.player-options { position: absolute; z-index: 4; top: 0; right: 0; bottom: 0; width: min(500px, 39vw); box-sizing: border-box; padding: 28px 24px 40px; overflow-y: auto; background: #050505; box-shadow: -18px 0 60px rgba(0,0,0,.45); }
+.player-options-heading { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.player-options h2 { margin: 0; color: #fff; font-size: 22px; }
+.player-options h3 { margin: 24px 0 10px; color: #aeb0b8; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
+.player-option-list { display: grid; gap: 8px; }
+.player-option { display: flex; align-items: center; gap: 14px; width: 100%; min-height: 62px; box-sizing: border-box; padding: 10px 18px; border: 1px solid transparent; border-radius: 11px; background: #2e2f35; color: #f4f4f6; cursor: pointer; text-align: left; font-size: 16px; font-weight: 750; }
+.player-option.is-selected { border-color: #fff; background: #fff; color: #121216; }
+.player-feed-option { text-transform: uppercase; }
+.player-option-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.player-source-icon { display: inline-flex; flex: 0 0 24px; align-items: center; justify-content: center; width: 24px; height: 24px; color: inherit; font-size: 25px; line-height: 1; }
+.player-driver-dot { display: inline-block; flex: 0 0 24px; width: 24px; height: 24px; border-radius: 50%; }
+.player-option.is-selected .player-driver-dot { box-shadow: 0 0 0 2px rgba(0,0,0,.12); }
+.player-source-divider { height: 1px; margin: 8px auto 10px; width: 28%; background: #818187; }
+.player-options #player-audio-options .player-option { min-height: 50px; font-size: 14px; text-transform: none; }
+.player-option:disabled { opacity: .5; }
+.player-options-note { margin: 4px 0; color: #b7b8c0; font-size: 13px; line-height: 1.5; }
 .player-timeline { display: flex; align-items: center; gap: 18px; margin-top: 15px; color: #fff; font-size: 12px; font-variant-numeric: tabular-nums; }
 .player-timeline input { width: min(720px, 68vw); height: 8px; accent-color: #e10628; cursor: pointer; }
 .player-error { position: absolute; inset: 20% 15%; display: flex; align-items: center; justify-content: center; padding: 40px; border: 1px solid #37383e; background: rgba(8,9,12,.94); color: #fff; font-size: 20px; line-height: 1.5; text-align: center; }

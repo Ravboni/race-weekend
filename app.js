@@ -20,6 +20,7 @@ const state = {
   playerLive: false,
   searchQuery: "",
   selectedChannelId: "",
+  audioTracks: [],
 };
 
 function element(tagName, className, text) {
@@ -405,6 +406,106 @@ function showDetail(item, fullMetadata) {
   document.getElementById("back-button").focus();
 }
 
+function playerOption(label, selected, onClick, disabled = false) {
+  const button = element("button", `player-option focusable${selected ? " is-selected" : ""}`, label);
+  button.type = "button";
+  button.disabled = disabled;
+  button.setAttribute("aria-pressed", selected ? "true" : "false");
+  button.addEventListener("click", onClick);
+  return button;
+}
+
+function renderPlayerSources() {
+  const host = document.getElementById("player-source-options");
+  if (!host) return;
+  host.replaceChildren();
+  const streams = (state.selectedItem?.metadata?.additionalStreams || [])
+    .filter((stream) => /^\d{1,12}$/.test(String(stream.channelId || "")));
+  if (!streams.length) {
+    host.append(element("p", "player-options-note", "No alternate video sources are available for this programme."));
+    return;
+  }
+  const driverColors = { NOR: "#ff7900", VER: "#3476d1", BOR: "#ff321d", HAD: "#3476d1", GAS: "#079edb", ANT: "#21ddc0", ALO: "#209979", LEC: "#ef0038", STR: "#209979", ALB: "#1769d2", HER: "#aaaeb5", HUL: "#ff321d", LAW: "#648af2", OCO: "#d8dcdf", LIN: "#648af2" };
+  streams.forEach((stream, index) => {
+    if (index === 4) {
+      const divider = element("div", "player-source-divider");
+      divider.setAttribute("role", "separator");
+      host.append(divider);
+    }
+    const id = String(stream.channelId);
+    const label = String(stream.title || stream.reportingName || stream.type || "Feed").slice(0, 70);
+    const primary = index < 4;
+    const button = playerOption(label, id === state.selectedChannelId, () => {
+      if (id === state.selectedChannelId) { closePlayerOptions(); return; }
+      state.selectedChannelId = id;
+      renderPlayerSources();
+      document.getElementById("player-status-text").textContent = `Switching to ${label}…`;
+      startPlayback(state.selectedItem).catch((error) => showPlayerError(error.message));
+    });
+    button.classList.toggle("player-feed-option", primary);
+    const icon = element("span", primary ? `player-source-icon source-icon-${index}` : "player-driver-dot");
+    if (primary) icon.textContent = ["◉", "◎", "♧", "▥"][index] || "•";
+    else {
+      const code = label.trim().split(/\s+/)[0].toUpperCase();
+      icon.style.backgroundColor = driverColors[code] || ["#3476d1", "#ef0038", "#21ddc0", "#ff7900"][index % 4];
+      icon.setAttribute("aria-hidden", "true");
+    }
+    const text = element("span", "player-option-label", label);
+    button.replaceChildren(icon, text);
+    host.append(button);
+  });
+}
+
+function audioTrackLabel(track, index) {
+  const label = Array.isArray(track.labels) ? track.labels.map((entry) => entry?.text || entry).filter(Boolean)[0] : "";
+  const role = Array.isArray(track.roles) ? track.roles.map((entry) => entry?.value || entry).filter(Boolean)[0] : "";
+  const language = track.lang || track.language || "";
+  const detail = [label, language, role].filter(Boolean).map((part) => String(part).trim()).filter((part, i, all) => all.indexOf(part) === i);
+  return detail.length ? detail.join(" · ") : `Audio ${index + 1}`;
+}
+
+function renderPlayerAudio() {
+  const host = document.getElementById("player-audio-options");
+  if (!host) return;
+  host.replaceChildren();
+  const player = state.dashPlayer;
+  let current = null;
+  try { current = player?.getCurrentTrackFor("audio") || null; } catch (_error) {}
+  if (!state.audioTracks.length) {
+    host.append(element("p", "player-options-note", player ? "No alternate audio tracks are provided for this feed." : "Audio tracks appear when playback starts."));
+    return;
+  }
+  state.audioTracks.forEach((track, index) => {
+    const selected = current ? (track.id === current.id && track.index === current.index) : index === 0;
+    host.append(playerOption(audioTrackLabel(track, index), selected, () => {
+      try {
+        player.setCurrentTrack(track);
+        window.setTimeout(renderPlayerAudio, 150);
+      } catch (_error) {
+        showToast("Could not switch the audio track.");
+      }
+    }));
+  });
+}
+
+function openPlayerOptions() {
+  const panel = document.getElementById("player-options");
+  if (!panel) return;
+  renderPlayerSources();
+  renderPlayerAudio();
+  panel.hidden = false;
+  document.querySelector(".player-chrome")?.classList.remove("is-hidden");
+  window.clearTimeout(state.playerTimer);
+  document.getElementById("player-options-close").focus();
+}
+
+function closePlayerOptions() {
+  const panel = document.getElementById("player-options");
+  if (!panel || panel.hidden) return;
+  panel.hidden = true;
+  document.getElementById("player-options-toggle").focus();
+}
+
 function findContentItem(data, id) {
   let found = null;
   function visit(value, depth = 0) {
@@ -558,6 +659,8 @@ async function startPlayback(item) {
     });
     player.on(window.dashjs.MediaPlayer.events.STREAM_INITIALIZED, () => {
       status.textContent = "Playing on F1 TV";
+      try { state.audioTracks = player.getTracksFor("audio") || []; } catch (_error) { state.audioTracks = []; }
+      renderPlayerAudio();
       video.play().catch(() => {});
       updateTimeline();
     });
@@ -571,7 +674,7 @@ async function startPlayback(item) {
     video.ontimeupdate = updateTimeline;
     video.onprogress = updateTimeline;
     player.initialize(video, stream.manifest, true);
-    document.getElementById("player-back").focus();
+    if (document.getElementById("player-options").hidden) document.getElementById("player-back").focus();
     window.clearInterval(state.timelineTimer);
     state.timelineTimer = window.setInterval(updateTimeline, 1000);
     state.playerTimer = window.setTimeout(() => document.querySelector(".player-chrome")?.classList.add("is-hidden"), 5000);
@@ -603,6 +706,7 @@ function stopPlayback() {
     video.load();
   }
   state.playerLive = false;
+  state.audioTracks = [];
 }
 
 function formatTime(seconds) {
@@ -709,8 +813,19 @@ function onRemoteKey(event) {
     const chrome = document.querySelector(".player-chrome");
     if (event.key === "Escape" || event.key === "Backspace" || event.keyCode === 461) {
       event.preventDefault();
+      if (!document.getElementById("player-options").hidden) { closePlayerOptions(); return; }
       stopPlayback();
       setView("detail");
+      return;
+    }
+    if (["ContextMenu", "Menu", "AudioVolumeMute"].includes(event.key) || event.keyCode === 93) {
+      event.preventDefault();
+      openPlayerOptions();
+      return;
+    }
+    if (event.key === "ArrowRight" && document.activeElement === document.getElementById("player-video")) {
+      event.preventDefault();
+      openPlayerOptions();
       return;
     }
     if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) moveFocus(event);
@@ -751,6 +866,13 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("search-form").addEventListener("submit", submitSearch);
   document.getElementById("play-button").addEventListener("click", playSelected);
   document.getElementById("player-back").addEventListener("click", () => { stopPlayback(); setView("detail"); });
+  document.getElementById("player-options-toggle").addEventListener("click", openPlayerOptions);
+  document.getElementById("player-options-close").addEventListener("click", closePlayerOptions);
+  document.getElementById("player-video").tabIndex = 0;
+  document.getElementById("player-video").addEventListener("contextmenu", (event) => {
+    event.preventDefault();
+    openPlayerOptions();
+  });
   document.getElementById("player-toggle").addEventListener("click", () => {
     const video = document.getElementById("player-video");
     if (video.paused) video.play(); else video.pause();

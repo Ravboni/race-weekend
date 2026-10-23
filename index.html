@@ -53,12 +53,20 @@
               <button id="player-toggle" class="button button-glass focusable" type="button">Pause</button>
               <button id="player-mute" class="button button-glass focusable" type="button">Mute</button>
               <button id="player-live" class="button button-glass focusable" type="button" hidden>Go to Live</button>
+              <button id="player-options-toggle" class="button button-glass focusable" type="button">Sources &amp; audio</button>
             </div>
             <div class="player-timeline">
               <input id="player-scrubber" class="focusable" type="range" min="0" max="1000" value="1000" aria-label="Seek through programme">
               <span id="player-time">LIVE</span>
             </div>
           </div>
+          <aside id="player-options" class="player-options" aria-label="Playback options" hidden>
+            <div class="player-options-heading"><h2>Sources &amp; audio</h2><button id="player-options-close" class="button button-glass focusable" type="button">Done</button></div>
+            <h3>Video source</h3>
+            <div id="player-source-options" class="player-option-list"></div>
+            <h3>Audio</h3>
+            <div id="player-audio-options" class="player-option-list"><p class="player-options-note">Audio tracks appear when playback starts.</p></div>
+          </aside>
           <div id="player-error" class="player-error" hidden></div>
         </section>
 
