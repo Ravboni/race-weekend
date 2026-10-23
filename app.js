@@ -21,6 +21,8 @@ const state = {
   searchQuery: "",
   selectedChannelId: "",
   audioTracks: [],
+  signInReturnFocus: null,
+  pendingSeekValue: null,
 };
 
 function element(tagName, className, text) {
@@ -124,6 +126,22 @@ function setView(name) {
   player.hidden = name !== "player";
   error.hidden = name !== "error";
   document.getElementById("main-content").scrollTop = 0;
+  const active = document.activeElement;
+  if (!active || active === document.body || active.closest("[hidden]")) focusDefault(name);
+}
+
+function focusDefault(name) {
+  const targetByView = {
+    home: () => document.querySelector(".hero-actions .focusable")
+      || document.querySelector(".content-rail .focusable")
+      || document.querySelector(".nav-button"),
+    search: () => document.getElementById("search-input"),
+    detail: () => document.getElementById("back-button"),
+    player: () => document.getElementById("player-back"),
+    error: () => document.getElementById("retry-button"),
+  };
+  const target = targetByView[name]?.();
+  if (target && !target.closest("[hidden]") && target.getClientRects().length) target.focus();
 }
 
 function buildHero(container, selectedIndex = 0, focusSlide = false) {
@@ -327,8 +345,10 @@ async function submitSearch(event) {
     const items = searchItems(data);
     items.forEach((item) => results.append(buildCard(item)));
     message.textContent = items.length ? `${items.length} results for “${query}”` : `No F1 TV results for “${query}”.`;
+    (results.querySelector(".focusable") || document.getElementById("search-input")).focus();
   } catch (error) {
     message.textContent = error.message || "Search is unavailable right now.";
+    document.getElementById("search-input").focus();
   }
 }
 
@@ -439,6 +459,7 @@ function renderPlayerSources() {
       if (id === state.selectedChannelId) { closePlayerOptions(); return; }
       state.selectedChannelId = id;
       renderPlayerSources();
+      document.querySelector("#player-source-options .player-option.is-selected")?.focus();
       document.getElementById("player-status-text").textContent = `Switching to ${label}…`;
       startPlayback(state.selectedItem).catch((error) => showPlayerError(error.message));
     });
@@ -480,7 +501,10 @@ function renderPlayerAudio() {
     host.append(playerOption(audioTrackLabel(track, index), selected, () => {
       try {
         player.setCurrentTrack(track);
-        window.setTimeout(renderPlayerAudio, 150);
+        window.setTimeout(() => {
+          renderPlayerAudio();
+          host.querySelector(".player-option.is-selected")?.focus();
+        }, 150);
       } catch (_error) {
         showToast("Could not switch the audio track.");
       }
@@ -572,6 +596,10 @@ function closeSignIn() {
   state.pairingTimer = null;
   state.session?.cancelPairing();
   document.getElementById("sign-in-dialog").hidden = true;
+  const returnFocus = state.signInReturnFocus;
+  state.signInReturnFocus = null;
+  if (returnFocus && !returnFocus.closest("[hidden]") && returnFocus.getClientRects().length) returnFocus.focus();
+  else focusDefault(!document.getElementById("detail-view").hidden ? "detail" : "home");
 }
 
 async function beginSignIn() {
@@ -579,6 +607,7 @@ async function beginSignIn() {
   const status = document.getElementById("pairing-status");
   const code = document.getElementById("pairing-code");
   const canvas = document.getElementById("pairing-qr");
+  state.signInReturnFocus = document.activeElement;
   dialog.hidden = false;
   status.textContent = "Starting secure sign-in…";
   code.hidden = true;
@@ -707,6 +736,7 @@ function stopPlayback() {
   }
   state.playerLive = false;
   state.audioTracks = [];
+  state.pendingSeekValue = null;
 }
 
 function formatTime(seconds) {
@@ -739,9 +769,21 @@ function updateTimeline() {
     return;
   }
   scrubber.disabled = false;
-  const fraction = Math.max(0, Math.min(1, (video.currentTime - range.start) / (range.end - range.start)));
-  scrubber.value = String(Math.round(fraction * 1000));
+  const actualFraction = Math.max(0, Math.min(1, (video.currentTime - range.start) / (range.end - range.start)));
+  if (state.pendingSeekValue === null) scrubber.value = String(Math.round(actualFraction * 1000));
   liveButton.hidden = !state.playerLive;
+  if (state.pendingSeekValue !== null && document.activeElement === scrubber) {
+    const target = range.start + (range.end - range.start) * (state.pendingSeekValue / 1000);
+    const fromLive = Math.max(0, range.end - target);
+    label.textContent = state.playerLive
+      ? `LIVE −${formatTime(fromLive)} · OK to seek`
+      : `${formatTime(target)} · OK to seek`;
+    return;
+  }
+  if (document.activeElement === scrubber) {
+    label.textContent = state.playerLive ? "LIVE · Left/right to move · OK to seek" : `${formatTime(video.currentTime)} · Left/right to move · OK to seek`;
+    return;
+  }
   if (state.playerLive) {
     const behind = Math.max(0, range.end - video.currentTime);
     label.textContent = behind > 5 ? `LIVE  −${formatTime(behind)}` : "LIVE";
@@ -756,6 +798,36 @@ function seekScrubber() {
   if (!range) return;
   const fraction = Number(document.getElementById("player-scrubber").value) / 1000;
   video.currentTime = range.start + (range.end - range.start) * fraction;
+  state.pendingSeekValue = null;
+  updateTimeline();
+}
+
+function adjustPendingSeek(direction) {
+  const video = document.getElementById("player-video");
+  const scrubber = document.getElementById("player-scrubber");
+  const range = timelineRange(video);
+  if (!range || range.end <= range.start) return;
+  const span = range.end - range.start;
+  const step = Math.max(1, Math.round(1000 * 5 / span));
+  const currentValue = state.pendingSeekValue === null ? Number(scrubber.value) : state.pendingSeekValue;
+  state.pendingSeekValue = Math.max(0, Math.min(1000, currentValue + direction * step));
+  scrubber.value = String(state.pendingSeekValue);
+  updateTimeline();
+}
+
+function confirmPendingSeek() {
+  const scrubber = document.getElementById("player-scrubber");
+  if (state.pendingSeekValue === null) {
+    seekScrubber();
+    return;
+  }
+  scrubber.value = String(state.pendingSeekValue);
+  seekScrubber();
+}
+
+function cancelPendingSeek() {
+  if (state.pendingSeekValue === null) return;
+  state.pendingSeekValue = null;
   updateTimeline();
 }
 
@@ -767,16 +839,41 @@ function goLive() {
   updateTimeline();
 }
 
-function focusables() {
-  return [...document.querySelectorAll(".focusable")].filter((node) => !node.disabled && !node.closest("[hidden]") && node.getClientRects().length > 0);
+function focusScope() {
+  const signInDialog = document.getElementById("sign-in-dialog");
+  if (!signInDialog.hidden) return signInDialog;
+  const playerView = document.getElementById("player-view");
+  if (!playerView.hidden) {
+    const options = document.getElementById("player-options");
+    return options.hidden ? document.querySelector(".player-chrome") : options;
+  }
+  const activeView = ["home", "search", "detail", "error"]
+    .map((id) => document.getElementById(`${id}-view`))
+    .find((view) => view && !view.hidden);
+  return { views: [document.querySelector(".topbar"), activeView].filter(Boolean) };
 }
 
-function moveFocus(event) {
-  const direction = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] }[event.key];
-  if (!direction) return;
-  const items = focusables();
+function focusables() {
+  const scope = focusScope();
+  const roots = scope.views || [scope];
+  return roots.flatMap((root) => [...root.querySelectorAll(".focusable")])
+    .filter((node) => !node.disabled && !node.closest("[hidden]") && node.getClientRects().length > 0);
+}
+
+function moveFocus(event, key = event.key) {
+  const direction = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] }[key];
+  if (!direction) return false;
   const current = document.activeElement;
-  if (!items.includes(current)) return;
+  if (current.matches?.("input:not([type='range']), textarea, [contenteditable='true']")
+      && (key === "ArrowLeft" || key === "ArrowRight")) return false;
+  const items = focusables();
+  if (!items.length) { event.preventDefault(); return true; }
+  if (!items.includes(current)) {
+    event.preventDefault();
+    items[0].focus();
+    items[0].scrollIntoView({ block: "nearest", inline: "nearest" });
+    return true;
+  }
   const currentRect = current.getBoundingClientRect();
   const cx = currentRect.left + currentRect.width / 2;
   const cy = currentRect.top + currentRect.height / 2;
@@ -794,47 +891,69 @@ function moveFocus(event) {
     const score = primary + cross * 2.2;
     if (score < bestScore) { best = item; bestScore = score; }
   });
+  event.preventDefault();
   if (best) {
-    event.preventDefault();
     best.focus();
     best.scrollIntoView({ block: "nearest", inline: "nearest" });
   }
+  return true;
 }
 
 function onRemoteKey(event) {
+  const key = event.key?.startsWith("Arrow") ? event.key : ({
+    37: "ArrowLeft", 38: "ArrowUp", 39: "ArrowRight", 40: "ArrowDown",
+  }[event.keyCode] || ({ Left: "ArrowLeft", Up: "ArrowUp", Right: "ArrowRight", Down: "ArrowDown" }[event.key] || event.key));
+  const editingText = document.activeElement.matches?.("input:not([type='range']), textarea, [contenteditable='true']");
   if (document.getElementById("sign-in-dialog") && !document.getElementById("sign-in-dialog").hidden) {
-    if (event.key === "Escape" || event.key === "Backspace" || event.keyCode === 461) {
+    if (key === "Escape" || key === "Back" || (key === "Backspace" && !editingText) || event.keyCode === 461) {
       event.preventDefault();
       closeSignIn();
+    } else {
+      moveFocus(event, key);
     }
     return;
   }
   if (!document.getElementById("player-view").hidden) {
     const chrome = document.querySelector(".player-chrome");
-    if (event.key === "Escape" || event.key === "Backspace" || event.keyCode === 461) {
+    if (key === "Escape" || key === "Back" || (key === "Backspace" && !editingText) || event.keyCode === 461) {
       event.preventDefault();
       if (!document.getElementById("player-options").hidden) { closePlayerOptions(); return; }
       stopPlayback();
       setView("detail");
       return;
     }
-    if (["ContextMenu", "Menu", "AudioVolumeMute"].includes(event.key) || event.keyCode === 93) {
+    if (["ContextMenu", "Menu"].includes(key) || event.keyCode === 93) {
       event.preventDefault();
       openPlayerOptions();
       return;
     }
-    if (event.key === "ArrowRight" && document.activeElement === document.getElementById("player-video")) {
+    const scrubber = document.getElementById("player-scrubber");
+    if (document.activeElement === scrubber) {
+      if (key === "ArrowLeft" || key === "ArrowRight") {
+        event.preventDefault();
+        adjustPendingSeek(key === "ArrowLeft" ? -1 : 1);
+        window.clearTimeout(state.playerTimer);
+        return;
+      }
+      if (["Enter", "Select", "Accept"].includes(key) || event.keyCode === 13) {
+        event.preventDefault();
+        confirmPendingSeek();
+        window.clearTimeout(state.playerTimer);
+        return;
+      }
+    }
+    if (key === "ArrowRight" && document.activeElement === document.getElementById("player-video")) {
       event.preventDefault();
       openPlayerOptions();
       return;
     }
-    if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) moveFocus(event);
     if (chrome) chrome.classList.remove("is-hidden");
+    if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(key)) moveFocus(event, key);
     window.clearTimeout(state.playerTimer);
     state.playerTimer = window.setTimeout(() => chrome?.classList.add("is-hidden"), 5000);
     return;
   }
-  if (event.key === "Escape" || event.key === "Backspace" || event.keyCode === 461) {
+  if (key === "Escape" || key === "Back" || (key === "Backspace" && !editingText) || event.keyCode === 461) {
     if (!document.getElementById("search-view").hidden) {
       event.preventDefault();
       setView("home");
@@ -857,7 +976,7 @@ function onRemoteKey(event) {
     }
     return;
   }
-  moveFocus(event);
+  moveFocus(event, key);
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -885,6 +1004,10 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   document.getElementById("player-live").addEventListener("click", goLive);
   document.getElementById("player-scrubber").addEventListener("change", seekScrubber);
+  document.getElementById("player-scrubber").addEventListener("click", () => {
+    if (state.pendingSeekValue !== null) confirmPendingSeek();
+  });
+  document.getElementById("player-scrubber").addEventListener("blur", cancelPendingSeek);
   document.getElementById("sign-in-cancel").addEventListener("click", closeSignIn);
   document.getElementById("account-button").addEventListener("click", () => {
     if (state.session?.signedIn) {
