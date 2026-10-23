@@ -1177,6 +1177,12 @@ function moveFocus(event, key = event.key) {
   const direction = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] }[key];
   if (!direction) return false;
   const current = document.activeElement;
+  // The account button is the rightmost top-level control; don't let the
+  // geometric focus search wrap into content when the user presses Right.
+  if (current.id === "account-button" && key === "ArrowRight") {
+    event.preventDefault();
+    return true;
+  }
   if (current.matches?.("input:not([type='range']), textarea, [contenteditable='true']")
       && (key === "ArrowLeft" || key === "ArrowRight")) return false;
   if (moveHomeBetweenRows(event, key, current)) return true;

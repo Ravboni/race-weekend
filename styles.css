@@ -1124,3 +1124,27 @@ button:focus, input:focus, select:focus, textarea:focus { outline: none; }
 .player-options #player-subtitle-options .player-option { font-size: var(--type-title-s); font-weight: 500; line-height: var(--line-title-s); }
 .sign-in-card h2, .sign-out-card h2 { font-size: var(--type-headline-s); font-weight: 400; line-height: var(--line-headline-s); }
 .pairing-code { font-size: var(--type-title-l); font-weight: 500; line-height: var(--line-title-l); }
+
+/* Keep the focused edge tabs inside the nav viewport and align account with
+   the 64px tab targets. The main scroller keeps a clear gap below the tabs. */
+.primary-nav {
+  overflow: visible;
+  padding-inline: 16px;
+  margin-inline: -16px;
+}
+.profile-chip {
+  width: 64px;
+  height: 64px;
+  min-height: 64px;
+  padding: 4px;
+}
+.profile-avatar { width: 48px; height: 48px; }
+.profile-avatar svg { width: 32px; height: 32px; }
+.profile-chip:focus {
+  z-index: 5;
+  outline: none;
+  background: rgba(255,255,255,.12);
+  box-shadow: 0 0 0 3px rgba(237,20,59,.82), 0 8px 20px rgba(0,0,0,.38);
+  transform: scale(1.04);
+}
+.main-content { scroll-padding-top: 40px; }
