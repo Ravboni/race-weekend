@@ -434,6 +434,69 @@ body { color: var(--ink); }
 .sign-in-card h2 { font-size: 36px; }
 .sign-in-card > p:not(.detail-eyebrow):not(.pairing-code) { color: var(--ink-muted); font-size: 19px; }
 
+/* Immersive Featured Carousel: cinematic image, readable content block, bottom-end dots. */
+.hero {
+  isolation: isolate;
+  align-items: center;
+  background: #15161b;
+}
+.hero::after { content: none; }
+.hero-backdrop {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background-color: #15161b;
+  background-position: center 34%;
+  background-size: cover;
+  animation: hero-backdrop-in .24s ease-out both;
+}
+.hero-backdrop::after {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(7,8,12,.94) 0%, rgba(7,8,12,.78) 25%, rgba(7,8,12,.28) 55%, rgba(7,8,12,.04) 100%),
+    linear-gradient(0deg, var(--canvas) 0%, rgba(9,11,16,.12) 23%, transparent 58%);
+  content: "";
+}
+.hero-copy {
+  width: min(860px, 59vw);
+  padding: 32px 0 56px 8vw;
+  animation: hero-copy-in .2s ease-out both;
+}
+.hero-indicators {
+  position: absolute;
+  z-index: 2;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+.hero-indicator {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255,255,255,.54);
+  transition: transform .16s ease, background-color .16s ease, box-shadow .16s ease;
+}
+.hero-indicator.active { width: 8px; background: #fff; }
+.hero-indicator:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 5px;
+  transform: scale(1.2);
+  box-shadow: none;
+}
+@keyframes hero-backdrop-in { from { opacity: .55; } to { opacity: 1; } }
+@keyframes hero-copy-in { from { opacity: .65; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .hero-backdrop, .hero-copy { animation: none; }
+  .hero-indicator { transition: none; }
+}
+
 @media (min-width: 1600px) {
   .topbar { height: 104px; min-height: 104px; }
   .brand { width: 168px; flex-basis: 168px; }

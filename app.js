@@ -12,6 +12,9 @@ const state = {
   homeData: null,
   heroContainer: null,
   heroIndex: 0,
+  heroTimer: null,
+  heroFocused: false,
+  heroHovered: false,
   session: null,
   dashPlayer: null,
   pairingTimer: null,
@@ -129,6 +132,7 @@ function setView(name, { pushHistory = true } = {}) {
     window.history.pushState({ f1tv: true, screen: name, panel: null }, "", window.location.href);
   }
   state.currentView = name;
+  scheduleHeroAutoAdvance();
   if (changed) {
     state.playerPanel = null;
     state.playerOverlay = false;
@@ -166,6 +170,7 @@ function focusDefault(name) {
 
 function buildHero(container, selectedIndex = 0, focusSlide = false) {
   const host = document.getElementById("hero");
+  window.clearTimeout(state.heroTimer);
   host.replaceChildren();
   const pageLabel = document.getElementById("page-label");
   const isHomePage = state.pageTitle === "Home";
@@ -175,6 +180,7 @@ function buildHero(container, selectedIndex = 0, focusSlide = false) {
     state.heroContainer = null;
     state.heroIndex = 0;
     host.hidden = true;
+    scheduleHeroAutoAdvance();
     return;
   }
   const items = contentList(container);
@@ -188,10 +194,37 @@ function buildHero(container, selectedIndex = 0, focusSlide = false) {
   host.hidden = false;
   const metadata = item.metadata;
   const eventInfo = metadata.emfAttributes || {};
-  const image = contentImage(item, 1700, 900);
-  host.style.backgroundImage = image ? `linear-gradient(90deg, rgba(5,6,9,.96) 0%, rgba(5,6,9,.79) 37%, rgba(5,6,9,.15) 100%), linear-gradient(0deg, #090a0e 0%, transparent 45%), url("${image}")` : "";
+  host.setAttribute("role", "region");
+  host.setAttribute("aria-roledescription", "carousel");
+  host.setAttribute("aria-label", "Featured F1 TV content");
+  if (!host.dataset.carouselEvents) {
+    host.dataset.carouselEvents = "true";
+    host.addEventListener("focusin", () => {
+      state.heroFocused = true;
+      scheduleHeroAutoAdvance();
+    });
+    host.addEventListener("focusout", () => window.setTimeout(() => {
+      state.heroFocused = host.contains(document.activeElement);
+      scheduleHeroAutoAdvance();
+    }, 0));
+    host.addEventListener("mouseenter", () => {
+      state.heroHovered = true;
+      scheduleHeroAutoAdvance();
+    });
+    host.addEventListener("mouseleave", () => {
+      state.heroHovered = false;
+      scheduleHeroAutoAdvance();
+    });
+    document.addEventListener("visibilitychange", scheduleHeroAutoAdvance);
+  }
+  const image = contentImage(item, 1920, 1080);
+  const backdrop = element("div", "hero-backdrop");
+  if (image) backdrop.style.backgroundImage = `url("${image}")`;
+  backdrop.setAttribute("aria-hidden", "true");
+  host.append(backdrop);
 
   const copy = element("div", "hero-copy");
+  copy.setAttribute("aria-live", "polite");
   const badge = element("p", `hero-badge${metadata.contentSubtype === "LIVE" ? " is-live" : ""}`,
     metadata.contentSubtype === "LIVE" ? "LIVE SESSION" : "FEATURED");
   copy.append(badge);
@@ -203,29 +236,63 @@ function buildHero(container, selectedIndex = 0, focusSlide = false) {
   const actions = element("div", "hero-actions");
   const play = element("button", "button button-primary focusable");
   play.type = "button";
+  play.dataset.heroAction = "watch";
   play.append(element("span", "play-icon", "▶"), element("span", "", "Watch now"));
   play.addEventListener("click", () => openContent(item));
   actions.append(play);
 
   const details = element("button", "button button-glass focusable", "More info");
   details.type = "button";
+  details.dataset.heroAction = "details";
   details.addEventListener("click", () => openContent(item));
   actions.append(details);
   copy.append(actions);
 
   const indicators = element("div", "hero-indicators");
-  items.slice(0, 4).forEach((_, index) => {
+  indicators.setAttribute("role", "group");
+  indicators.setAttribute("aria-label", "Featured items");
+  items.forEach((_, index) => {
     const indicator = element("button", `hero-indicator focusable${index === state.heroIndex ? " active" : ""}`);
     indicator.type = "button";
-    indicator.setAttribute("aria-label", `Featured item ${index + 1} of ${Math.min(items.length, 4)}`);
+    indicator.setAttribute("aria-label", `Show featured item ${index + 1} of ${items.length}`);
     indicator.setAttribute("aria-current", index === state.heroIndex ? "true" : "false");
     indicator.dataset.slide = String(index);
     indicator.addEventListener("click", () => buildHero(container, index, true));
     indicators.append(indicator);
   });
-  copy.append(indicators);
   host.append(copy);
+  host.append(indicators);
   if (focusSlide) host.querySelector(`[data-slide="${state.heroIndex}"]`)?.focus();
+  scheduleHeroAutoAdvance();
+}
+
+function scheduleHeroAutoAdvance() {
+  window.clearTimeout(state.heroTimer);
+  const host = document.getElementById("hero");
+  const items = contentList(state.heroContainer);
+  const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  if (!host || host.hidden || state.currentView !== "home" || items.length < 2
+      || state.heroFocused || state.heroHovered || document.hidden || reducedMotion) return;
+  state.heroTimer = window.setTimeout(() => {
+    buildHero(state.heroContainer, (state.heroIndex + 1) % items.length);
+  }, 5000);
+}
+
+function advanceHeroFromControl(key, control) {
+  const action = control?.dataset.heroAction;
+  if (!action) return false;
+  const items = contentList(state.heroContainer);
+  if (items.length < 2) return false;
+  const actionIndex = action === "watch" ? 0 : 1;
+  const targetIndex = key === "ArrowRight" && actionIndex === 1
+    ? state.heroIndex + 1
+    : key === "ArrowLeft" && actionIndex === 0
+      ? state.heroIndex - 1
+      : -1;
+  if (targetIndex < 0 || targetIndex >= items.length) return false;
+  buildHero(state.heroContainer, targetIndex);
+  document.querySelector(`[data-hero-action="${action}"]`)?.focus();
+  return true;
 }
 
 function buildCard(item) {
@@ -1105,6 +1172,12 @@ function onRemoteKey(event) {
       event.preventDefault();
       requestAppBack();
     }
+    return;
+  }
+  if (state.currentView === "home" && (key === "ArrowLeft" || key === "ArrowRight")
+      && document.activeElement.closest?.("#hero")
+      && advanceHeroFromControl(key, document.activeElement)) {
+    event.preventDefault();
     return;
   }
   moveFocus(event, key);
