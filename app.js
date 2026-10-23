@@ -1129,15 +1129,18 @@ function revealFocusTarget(target) {
   if (!main.contains(target)) return;
 
   // Some webOS builds ignore scroll-padding when scrollIntoView uses "nearest".
-  // Correct the main scroller explicitly so focused content stays below tabs.
+  // Keep a rail's heading below the tabs too; positioning only its card leaves
+  // the heading clipped against the top edge on the next scroll step.
   const viewport = main.getBoundingClientRect();
-  const rect = target.getBoundingClientRect();
+  const section = target.closest(".content-section");
+  const anchor = section?.querySelector(".section-header") || target;
+  const rect = anchor.getBoundingClientRect();
   const safeTop = viewport.top + 40;
   const safeBottom = viewport.bottom - 24;
   if (rect.top < safeTop) {
     main.scrollTop -= safeTop - rect.top;
-  } else if (rect.bottom > safeBottom) {
-    main.scrollTop += rect.bottom - safeBottom;
+  } else if (target.getBoundingClientRect().bottom > safeBottom) {
+    main.scrollTop += target.getBoundingClientRect().bottom - safeBottom;
   }
 }
 
