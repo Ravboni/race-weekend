@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="color-scheme" content="dark">
+    <title>F1 TV for webOS</title>
+    <link rel="stylesheet" href="styles.css">
+    <script defer src="app.js"></script>
+  </head>
+  <body>
+    <main class="screen">
+      <header class="topbar">
+        <div class="brand"><span class="brand-mark">F1</span><span>TV <small>webOS prototype</small></span></div>
+        <span class="badge">UNOFFICIAL</span>
+      </header>
+
+      <section class="hero" aria-labelledby="headline">
+        <div class="hero-copy">
+          <p class="eyebrow">LG C2 · WEBOS 22</p>
+          <h1 id="headline">Bringing race day<br>to the big screen.</h1>
+          <p class="intro">A native webOS client prototype. First, we’re checking the TV’s secure playback capabilities.</p>
+          <button id="check-button" class="primary" type="button">Check this TV</button>
+        </div>
+        <div class="telemetry" aria-live="polite">
+          <div class="telemetry-heading"><span class="pulse"></span> DEVICE CHECK</div>
+          <dl>
+            <div><dt>Platform</dt><dd id="platform-value">Checking…</dd></div>
+            <div><dt>Media Source Extensions</dt><dd id="mse-value">Checking…</dd></div>
+            <div><dt>Widevine Modular</dt><dd id="widevine-value">Checking…</dd></div>
+            <div><dt>PlayReady</dt><dd id="playready-value">Checking…</dd></div>
+            <div><dt>HEVC video</dt><dd id="hevc-value">Checking…</dd></div>
+          </dl>
+          <p id="check-note" class="note">DRM checks ask the TV what it supports. They do not request a license or play protected content.</p>
+        </div>
+      </section>
+
+      <footer>
+        <span>Prototype only · F1 TV account and subscription required for future playback</span>
+        <span>Login and streaming are not implemented yet</span>
+      </footer>
+    </main>
+  </body>
+</html>

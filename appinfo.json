@@ -1,0 +1,13 @@
+{
+  "id": "com.ravboni.f1tv.webos",
+  "version": "0.1.0",
+  "vendor": "Ravboni",
+  "type": "web",
+  "main": "index.html",
+  "title": "F1 TV",
+  "icon": "icon.png",
+  "largeIcon": "icon.png",
+  "resolution": "1920x1080",
+  "disable Back History API": true,
+  "supportTouchMode": false
+}
