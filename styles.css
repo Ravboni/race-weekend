@@ -286,14 +286,15 @@ body { color: var(--ink); }
 .brand { width: 168px; flex-basis: 168px; }
 .brand-mark { color: var(--accent); font-size: 39px; }
 .brand-name { margin-left: 10px; font-size: 25px; letter-spacing: .07em; }
-.primary-nav { gap: clamp(8px, 1vw, 20px); }
+.primary-nav { gap: 32px; }
 .nav-button {
   height: auto;
-  min-height: 48px;
-  padding: 0 20px;
+  min-height: 64px;
+  padding: 12px 32px;
   border-radius: 999px;
   color: var(--ink-muted);
-  font-size: 18px;
+  font-size: 32px;
+  line-height: 40px;
   transition: color .15s ease, background .15s ease, transform .15s ease, border-color .15s ease, box-shadow .15s ease;
 }
 .nav-button:hover, .nav-button.active { color: #fff; }
@@ -504,8 +505,8 @@ body { color: var(--ink); }
   .brand { width: 168px; flex-basis: 168px; }
   .brand-mark { font-size: 39px; }
   .brand-name { font-size: 25px; }
-  .primary-nav { gap: clamp(8px, 1vw, 20px); }
-  .nav-button { font-size: 18px; }
+  .primary-nav { gap: 32px; }
+  .nav-button { min-height: 64px; padding: 12px 32px; font-size: 32px; line-height: 40px; }
   .profile-chip { min-height: 64px; font-size: 16px; }
   .profile-avatar { width: 42px; height: 42px; font-size: 17px; }
   .hero { height: min(660px, 61vh); min-height: 510px; }
