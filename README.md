@@ -4,7 +4,7 @@ An experimental client for rooted LG webOS televisions, starting with the LG C2.
 
 ## Status
 
-This is an early, installable webOS TV shell. It checks the TV runtime's video and DRM capabilities and can open the official F1 TV web player in the app. On an LG C2 running webOS 11.2.0, the official site loaded, accepted the selected cookie preference, and reached the signed-in F1 TV home page. The TV reported MSE, Widevine Modular, PlayReady, and HEVC support. The live 2026 United States Grand Prix Practice 1 player started: its video element reached ready state 4, reported 1920×1080, had EME media keys, and its playback time and buffer advanced. The DevTools screenshot showed a black video rectangle, so visible picture on the physical panel still needs confirmation. A native catalogue and player remain future work. The project will use a valid F1 TV subscription and the TV's supported DRM pipeline; it will not decrypt, record, or redistribute protected streams.
+This is an early, installable webOS TV shell. It checks the TV runtime's video and DRM capabilities and can open the official F1 TV web player in the app. On an LG C2 running webOS 11.2.0, the official site loaded, accepted the selected cookie preference, and reached the signed-in F1 TV home page. The TV reported MSE, Widevine Modular, PlayReady, and HEVC support. Live playback of the 2026 United States Grand Prix Practice 1 is confirmed on the physical panel. The player reached ready state 4, reported 1920×1080, had EME media keys, and its playback time and buffer advanced. A native catalogue and player remain future work. The project will use a valid F1 TV subscription and the TV's supported DRM pipeline; it will not decrypt, record, or redistribute protected streams.
 
 ## Development
 
