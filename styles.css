@@ -1034,3 +1034,14 @@ button:focus, input:focus, select:focus, textarea:focus { outline: none; }
 @media (max-width: 1200px) {
   .hero { width: calc(100vw - 80px); }
 }
+
+/* Integrate navigation into the page surface and match the 24dp / 48dp inset. */
+.topbar {
+  height: 112px;
+  min-height: 112px;
+  align-items: flex-start;
+  padding: 48px 96px 0;
+  border-bottom: 0;
+  background: transparent;
+}
+.primary-nav { height: 64px; }
