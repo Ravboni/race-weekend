@@ -1123,7 +1123,7 @@ function focusables() {
     .filter((node) => !node.disabled && !node.closest("[hidden]") && node.getClientRects().length > 0);
 }
 
-function revealFocusTarget(target) {
+function revealFocusTarget(target, topbarControl = null) {
   const main = document.getElementById("main-content");
   target.scrollIntoView({ block: "nearest", inline: "nearest" });
   if (!main.contains(target)) return;
@@ -1135,7 +1135,12 @@ function revealFocusTarget(target) {
   const section = target.closest(".content-section");
   const anchor = section?.querySelector(".section-header") || target;
   const rect = anchor.getBoundingClientRect();
-  const safeTop = viewport.top + 40;
+  const activeTab = document.querySelector(".topbar .nav-button.active");
+  const control = topbarControl?.closest(".topbar")
+    ? topbarControl
+    : activeTab || document.getElementById("account-button");
+  const controlBottom = control?.getBoundingClientRect().bottom || viewport.top;
+  const safeTop = Math.max(viewport.top, controlBottom) + 40;
   const safeBottom = viewport.bottom - 24;
   if (rect.top < safeTop) {
     main.scrollTop -= safeTop - rect.top;
@@ -1190,7 +1195,7 @@ function moveHomeBetweenRows(event, key, current) {
   event.preventDefault();
   target.focus({ preventScroll: true });
   if (target.closest("#hero")) main.scrollTop = 0;
-  else revealFocusTarget(target);
+  else revealFocusTarget(target, current.closest(".topbar") ? current : null);
   return true;
 }
 
@@ -1252,7 +1257,7 @@ function moveFocus(event, key = event.key) {
       // Restore the home scroll origin when D-pad focus returns to the hero.
       document.getElementById("main-content").scrollTop = 0;
     } else {
-      revealFocusTarget(best);
+      revealFocusTarget(best, current.closest(".topbar") ? current : null);
     }
   }
   return true;
