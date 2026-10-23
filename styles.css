@@ -1059,3 +1059,68 @@ button:focus, input:focus, select:focus, textarea:focus { outline: none; }
 .content-card:focus .content-card-image {
   box-shadow: 0 0 12px rgba(237,20,59,.58), 0 4px 8px rgba(0,0,0,.36);
 }
+
+/* Android TV type scale, mapped from the 960x540dp guide canvas to the
+   1920x1080 CSS viewport used by webOS. Keep every role at its prescribed
+   size and line height, with scale variants available for denser content. */
+@font-face {
+  font-family: "Roboto";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("assets/fonts/roboto-latin-variable.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Roboto";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("assets/fonts/roboto-latin-ext-variable.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+:root {
+  --type-display-l: 114px; --line-display-l: 128px;
+  --type-display-m: 90px; --line-display-m: 104px;
+  --type-display-s: 72px; --line-display-s: 88px;
+  --type-headline-l: 64px; --line-headline-l: 80px;
+  --type-headline-m: 56px; --line-headline-m: 72px;
+  --type-headline-s: 48px; --line-headline-s: 64px;
+  --type-title-l: 44px; --line-title-l: 56px;
+  --type-title-m: 32px; --line-title-m: 48px;
+  --type-title-s: 28px; --line-title-s: 40px;
+  --type-label-l: 28px; --line-label-l: 40px;
+  --type-label-m: 24px; --line-label-m: 32px;
+  --type-label-s: 22px; --line-label-s: 32px;
+  --type-body-l: 32px; --line-body-l: 48px;
+  --type-body-m: 28px; --line-body-m: 40px;
+  --type-body-s: 24px; --line-body-s: 32px;
+  font-family: "Roboto", Arial, Helvetica, sans-serif;
+  font-synthesis: none;
+}
+
+/* Featured content uses headline; section and card headings use title roles.
+   Component text uses label roles, while descriptions use body roles. */
+.nav-button { font-size: var(--type-title-s); font-weight: 400; line-height: var(--line-title-s); }
+.hero-badge, .hero-grand-prix { font-size: var(--type-label-m); font-weight: 500; line-height: var(--line-label-m); }
+.hero-grand-prix { line-height: var(--line-title-m); }
+.hero-title { font-size: var(--type-headline-l); font-weight: 400; line-height: var(--line-headline-l); letter-spacing: 0; }
+.hero-description { font-size: var(--type-body-m); line-height: var(--line-body-m); }
+.button, .hero-actions .button, .sign-out-actions .button { font-size: var(--type-label-l); font-weight: 500; line-height: var(--line-label-l); }
+.section-title { font-size: var(--type-title-l); font-weight: 400; line-height: var(--line-title-l); letter-spacing: 0; }
+.view-all, .live-label, .duration-label, .detail-eyebrow, .channel-label, .detail-note,
+.back-button, .player-status, .player-timeline, .player-options h3, .toast { font-size: var(--type-label-m); font-weight: 500; line-height: var(--line-label-m); }
+.content-title { font-size: var(--type-title-m); font-weight: 500; line-height: var(--line-title-m); max-height: calc(var(--line-title-m) * 2); }
+.content-subtitle, .hero-description, .detail-description, .sign-in-card > p:not(.detail-eyebrow):not(.pairing-code),
+.player-options-note, .player-error { font-size: var(--type-body-m); line-height: var(--line-body-m); }
+.page-label { font-size: var(--type-display-s); font-weight: 400; line-height: var(--line-display-s); letter-spacing: 0; }
+.search-heading { font-size: var(--type-display-s); font-weight: 400; line-height: var(--line-display-s); letter-spacing: 0; }
+.search-form input { font-family: inherit; font-size: var(--type-body-l); line-height: var(--line-body-l); }
+.search-message, .detail-meta { font-size: var(--type-body-m); line-height: var(--line-body-m); }
+.detail-content h1, .error-view h1 { font-size: var(--type-display-s); font-weight: 400; line-height: var(--line-display-s); letter-spacing: 0; }
+.player-chrome h1 { font-size: var(--type-headline-s); font-weight: 400; line-height: var(--line-headline-s); }
+.player-options h2 { font-size: var(--type-title-l); font-weight: 400; line-height: var(--line-title-l); }
+.player-option, .player-options #player-audio-options .player-option,
+.player-options #player-subtitle-options .player-option { font-size: var(--type-title-s); font-weight: 500; line-height: var(--line-title-s); }
+.sign-in-card h2, .sign-out-card h2 { font-size: var(--type-headline-s); font-weight: 400; line-height: var(--line-headline-s); }
+.pairing-code { font-size: var(--type-title-l); font-weight: 500; line-height: var(--line-title-l); }
