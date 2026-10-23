@@ -4,93 +4,56 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="color-scheme" content="dark">
-    <meta name="theme-color" content="#08090c">
+    <meta name="theme-color" content="#090a0e">
     <title>F1 TV</title>
     <link rel="stylesheet" href="styles.css">
     <script defer src="app.js"></script>
   </head>
   <body>
-    <main class="app-shell">
+    <div class="app-shell">
       <header class="topbar">
-        <div class="brand" aria-label="F1 TV">
+        <div class="brand" aria-label="F1 TV home">
           <span class="brand-mark" aria-hidden="true">F1</span>
           <span class="brand-name">TV</span>
         </div>
-        <div class="topbar-right">
-          <span class="platform-tag"><span class="status-dot"></span> WEBOS TV</span>
-          <span class="unofficial">UNOFFICIAL</span>
-        </div>
+        <nav id="primary-nav" class="primary-nav" aria-label="F1 TV sections"></nav>
+        <div class="profile-chip"><span class="profile-avatar">J</span><span>F1 TV</span></div>
       </header>
 
-      <section class="hero" id="home" aria-labelledby="hero-title">
-        <div class="hero-art" aria-hidden="true">
-          <div class="orbit orbit-one"></div>
-          <div class="orbit orbit-two"></div>
-          <div class="hero-glow"></div>
-          <div class="track-line"></div>
-          <div class="hero-number">01</div>
-        </div>
-        <div class="hero-content">
-          <p class="eyebrow"><span class="live-dot"></span> YOUR RACE WEEKEND, ON THE BIG SCREEN</p>
-          <h1 id="hero-title">Every session.<br><span>One screen.</span></h1>
-          <p class="hero-description">Live races, onboard cameras and the F1 TV archive, powered by the official F1 TV player.</p>
-          <div class="actions">
-            <button id="open-f1-button" class="button button-primary" type="button">
-              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 3.5v13l10-6.5z"/></svg>
-              <span>Open F1 TV</span>
-              <span class="button-arrow" aria-hidden="true">›</span>
-            </button>
-            <button id="check-button" class="button button-secondary" type="button">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5.5h18v13H3zM8 22h8M12 18.5V22M7 10h4M7 13.5h8"/></svg>
-              <span>TV compatibility</span>
-            </button>
+      <main id="main-content" class="main-content">
+        <section id="home-view" class="home-view" aria-label="F1 TV home">
+          <div id="hero" class="hero"></div>
+          <h1 id="page-label" class="page-label" hidden></h1>
+          <div id="content-rails" class="content-rails" aria-live="polite">
+            <div class="loading-state"><span class="loading-spinner"></span><span>Loading your F1 TV home…</span></div>
           </div>
-          <p class="hint"><span class="remote-key">OK</span> Select with your remote</p>
-        </div>
+        </section>
 
-        <aside class="weekend-card" aria-label="Playback status">
-          <div class="card-topline"><span class="card-label">ON YOUR LG C2</span><span class="verified-mark">✓</span></div>
-          <div class="card-rule"></div>
-          <p class="card-kicker">OFFICIAL PLAYER</p>
-          <h2>Ready for<br>lights out.</h2>
-          <div class="playback-proof">
-            <span class="proof-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg></span>
-            <span><strong>Live playback confirmed</strong><small>LG C2 · webOS 11.2</small></span>
+        <section id="detail-view" class="detail-view" aria-label="Content details" hidden>
+          <div id="detail-backdrop" class="detail-backdrop"></div>
+          <div class="detail-content">
+            <button id="back-button" class="back-button focusable" type="button"><span aria-hidden="true">‹</span> Back</button>
+            <p id="detail-eyebrow" class="detail-eyebrow"></p>
+            <h1 id="detail-title"></h1>
+            <p id="detail-meta" class="detail-meta"></p>
+            <p id="detail-description" class="detail-description"></p>
+            <div class="detail-actions">
+              <button id="play-button" class="button button-primary focusable" type="button"><span class="play-icon">▶</span><span>Play</span></button>
+              <button id="list-button" class="button button-secondary focusable" type="button"><span class="list-icon">＋</span><span>Add to My List</span></button>
+            </div>
+            <p id="detail-note" class="detail-note"></p>
           </div>
-          <p class="account-note">Sign in with your F1 account in the official player.</p>
-        </aside>
-      </section>
+        </section>
 
-      <section class="feature-row" aria-label="F1 TV features">
-        <div class="feature"><span class="feature-index">01</span><span class="feature-copy"><strong>Watch live</strong><small>Grand Prix sessions</small></span></div>
-        <div class="feature"><span class="feature-index">02</span><span class="feature-copy"><strong>Choose your view</strong><small>Onboard cameras & data</small></span></div>
-        <div class="feature"><span class="feature-index">03</span><span class="feature-copy"><strong>Race archive</strong><small>Relive every lap</small></span></div>
-        <div class="feature-footnote">F1 TV subscription required</div>
-      </section>
+        <section id="error-view" class="error-view" hidden>
+          <p class="detail-eyebrow">F1 TV</p>
+          <h1>Can’t load the home feed.</h1>
+          <p class="detail-description">Check your TV’s internet connection and try again.</p>
+          <button id="retry-button" class="button button-primary focusable" type="button">Try again</button>
+        </section>
+      </main>
 
-      <footer class="footer">
-        <span>Unofficial homebrew app for LG webOS</span>
-        <span>F1 TV is a service of Formula One Digital Media Limited</span>
-      </footer>
-
-      <section id="compat-panel" class="compat-panel" role="dialog" aria-modal="true" aria-labelledby="compat-title" aria-hidden="true" hidden>
-        <div class="panel-backdrop"></div>
-        <div class="panel-card">
-          <button id="close-panel" class="panel-close" type="button" aria-label="Close compatibility panel">×</button>
-          <p class="eyebrow">DEVICE STATUS</p>
-          <h2 id="compat-title">This TV is ready.</h2>
-          <p class="panel-intro">Live F1 TV playback has been confirmed on this LG C2. These are the video capabilities exposed by its webOS runtime.</p>
-          <dl class="capability-list">
-            <div><dt>Platform</dt><dd id="platform-value">Checking…</dd></div>
-            <div><dt>Media Source Extensions</dt><dd id="mse-value">Checking…</dd></div>
-            <div><dt>Widevine Modular</dt><dd id="widevine-value">Checking…</dd></div>
-            <div><dt>PlayReady</dt><dd id="playready-value">Checking…</dd></div>
-            <div><dt>HEVC video</dt><dd id="hevc-value">Checking…</dd></div>
-          </dl>
-          <p id="check-note" class="panel-note">Capability checks do not request a license or play protected content.</p>
-          <button id="recheck-button" class="button button-secondary panel-recheck" type="button">Run check again</button>
-        </div>
-      </section>
-    </main>
+      <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    </div>
   </body>
 </html>

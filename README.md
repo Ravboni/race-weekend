@@ -4,7 +4,7 @@ An experimental client for rooted LG webOS televisions, starting with the LG C2.
 
 ## Status
 
-The app has a remote-friendly webOS home screen, TV capability panel, and a one-click route into the official F1 TV web player. On an LG C2 running webOS 11.2.0, the official site loaded, accepted the selected cookie preference, and reached the signed-in F1 TV home page. The TV reported MSE, Widevine Modular, PlayReady, and HEVC support. Live playback of the 2026 United States Grand Prix Practice 1 is confirmed on the physical panel. The player reached ready state 4, reported 1920×1080, had EME media keys, and its playback time and buffer advanced. The catalogue, sign-in and playback remain handled by F1 TV's own player; a webOS-native content catalogue/player is future work. The project uses a valid F1 TV subscription and the TV's supported DRM pipeline; it does not decrypt, record, or redistribute protected streams.
+The app reads F1 TV's signed-in menu and catalogue feed into its own webOS home, section, and content-detail screens. It renders the service's current hero, categories, session information, and artwork, with remote navigation across rails and sections. The catalogue feed is requested directly from F1 TV and account cookies stay in the TV's webview. On an LG C2 running webOS 11.2.0, F1 TV's official player has been confirmed for live playback at 1920×1080 with MSE and EME media keys. The current development build hands playback to F1 TV's official player; a fully native in-app player and search are still in progress. The project uses the signed-in F1 TV account and TV's supported DRM pipeline; it does not decrypt, record, or redistribute protected streams.
 
 ## Development
 
@@ -12,14 +12,14 @@ The app is a standard webOS TV web app. Install LG's current webOS CLI, register
 
 ```sh
 ares-package .
-ares-install -d <device-name> com.ravboni.f1tv.webos_0.2.0_all.ipk
+ares-install -d <device-name> com.ravboni.f1tv.webos_0.3.2_all.ipk
 ```
 
 On a rooted TV, Homebrew Channel / Device Manager can also be used to install a built IPK. Keep the TV's developer or homebrew installation instructions specific to your firmware.
 
 ## Reverse-engineering notes
 
-The Android TV application cannot run directly on webOS. The intended approach is to learn the official client's documented or observable account and content flows, then implement a webOS-native interface and use webOS Media Source Extensions / Encrypted Media Extensions for playback. Authentication tokens and DRM license material must remain on the device and must not be committed to this repository.
+The Android TV application cannot run directly on webOS. The app uses F1 TV's current menu, page, and video catalogue endpoints to build its own navigation and screens. Playback work will use the official subscription entitlement and the webOS Media Source Extensions / Encrypted Media Extensions path. Authentication tokens and DRM license material must remain on the device and must not be committed to this repository.
 
 ## References
 
