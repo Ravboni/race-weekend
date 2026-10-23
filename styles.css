@@ -650,6 +650,8 @@ button:focus, input:focus, select:focus, textarea:focus { outline: none; }
 }
 .content-card-copy {
   display: flex;
+  width: 100%;
+  min-width: 0;
   min-height: 96px;
   flex-direction: column;
   align-items: center;
@@ -659,18 +661,40 @@ button:focus, input:focus, select:focus, textarea:focus { outline: none; }
 }
 .content-series { display: none; }
 .content-title {
+  display: -webkit-box;
   width: 100%;
+  max-width: 100%;
+  max-height: 80px;
+  min-width: 0;
+  flex: 0 0 auto;
+  overflow: hidden;
   color: var(--ink);
   font-size: 32px;
   font-weight: 700;
   line-height: 40px;
+  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 .content-subtitle {
+  display: -webkit-box;
   width: 100%;
+  max-width: 100%;
+  max-height: 80px;
+  min-width: 0;
+  flex: 0 0 auto;
+  overflow: hidden;
   margin: 0;
   color: var(--ink-muted);
   font-size: 28px;
   line-height: 40px;
+  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 .content-card:focus {
   z-index: 4;
@@ -694,3 +718,11 @@ button:focus, input:focus, select:focus, textarea:focus { outline: none; }
 .content-card:active .content-card-image::after { border: 6px solid #85858d; }
 .live-label, .duration-label { bottom: 22px; padding: 14px 20px; border-radius: 10px; font-size: 24px; }
 .live-label { top: 22px; right: 22px; bottom: auto; }
+
+/* Give the focused image shadow room at the rail edges and above each row. */
+.content-rail {
+  margin-inline: -112px;
+  padding: 96px 112px;
+  scroll-padding-inline: 112px;
+}
+.content-card { scroll-margin: 96px 112px; }
