@@ -74,7 +74,8 @@ Requirements: Node.js 20 or newer, npm, and the [webOS CLI](https://webostv.deve
 ```sh
 npm install --global @webos-tools/cli
 git clone https://github.com/Ravboni/race-weekend-viewer.git
-cd f1tv-webos
+cd race-weekend-viewer
+git switch develop
 ./scripts/package.sh
 ```
 
@@ -85,7 +86,7 @@ ares-install --device myTV ./dist/com.ravboni.f1tv.webos_0.16.24_all.ipk
 ares-launch --device myTV com.ravboni.f1tv.webos
 ```
 
-Pushing a version tag such as `v0.16.24` runs the GitHub Actions release workflow. It packages the app and attaches the `.ipk` and checksum to the GitHub release.
+Contributions go to `develop` first. The project owner promotes reviewed changes to `main` and creates version tags; only commits already on `main` can produce a release. See [CONTRIBUTING.md](CONTRIBUTING.md) for the branch and release workflow.
 
 ## Account data and safe bug reports
 

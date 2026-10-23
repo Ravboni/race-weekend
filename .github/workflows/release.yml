@@ -4,17 +4,27 @@ on:
   push:
     tags:
       - 'v*'
-  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
   package:
+    if: github.actor == 'Ravboni'
     runs-on: ubuntu-latest
     steps:
       - name: Check out source
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Require release commit to be on main
+        run: |
+          git fetch origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "Refusing to publish: release tags must point to a commit on main."
+            exit 1
+          fi
 
       - name: Set up Node.js
         uses: actions/setup-node@v4

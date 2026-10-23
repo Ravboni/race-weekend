@@ -80,7 +80,8 @@ To build from source, use Node.js 20 or newer and npm:
 ```sh
 npm install --global @webos-tools/cli
 git clone https://github.com/Ravboni/race-weekend-viewer.git
-cd f1tv-webos
+cd race-weekend-viewer
+git switch develop
 ./scripts/package.sh
 ```
 

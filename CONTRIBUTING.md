@@ -2,6 +2,13 @@
 
 Thanks for helping improve Race Weekend Viewer. The project is an unofficial app built to bring F1 TV to LG webOS televisions. Contributions should keep the app useful with a TV remote and compatible with the webOS browser and media runtime.
 
+## Branch and release workflow
+
+- `develop` is the default branch. Start work from `develop` and target contribution pull requests at `develop`.
+- `main` is the promotion and release branch. Only the project owner promotes changes from `develop` to `main`.
+- Only the project owner creates `v*` version tags and publishes releases. The release workflow accepts tags only when their commit is already on `main`.
+- Contributors and coding assistants should not push to `main`, create version tags, or publish releases.
+
 ## Before you start
 
 - Check existing issues and pull requests for related work before opening a new one.
@@ -17,6 +24,7 @@ You need Node.js 20 or newer, npm, and the LG [webOS CLI](https://webostv.develo
 npm install --global @webos-tools/cli
 git clone https://github.com/Ravboni/race-weekend-viewer.git
 cd race-weekend-viewer
+git switch develop
 ./scripts/package.sh
 ```
 
