@@ -1123,12 +1123,63 @@ function focusables() {
     .filter((node) => !node.disabled && !node.closest("[hidden]") && node.getClientRects().length > 0);
 }
 
+function nearestCardInSection(section, reference) {
+  const cards = [...(section?.querySelectorAll(".content-card") || [])];
+  if (!cards.length) return null;
+  if (reference.matches?.(".content-card")) {
+    const index = cards.indexOf(reference);
+    if (index >= 0) return cards[index];
+  }
+  const referenceX = reference.getBoundingClientRect().left + reference.getBoundingClientRect().width / 2;
+  return cards.reduce((nearest, card) => {
+    const rect = card.getBoundingClientRect();
+    const distance = Math.abs(rect.left + rect.width / 2 - referenceX);
+    return !nearest || distance < nearest.distance ? { card, distance } : nearest;
+  }, null)?.card || null;
+}
+
+function moveHomeBetweenRows(event, key, current) {
+  if (state.currentView !== "home" || !["ArrowUp", "ArrowDown"].includes(key)) return false;
+  const sections = [...document.querySelectorAll("#content-rails > .content-section")];
+  const heroAction = document.querySelector("#hero .hero-actions .focusable");
+  const main = document.getElementById("main-content");
+  let target = null;
+
+  if (key === "ArrowDown") {
+    if (current.closest(".topbar")) {
+      target = heroAction || nearestCardInSection(sections[0], current);
+    } else if (current.closest("#hero")) {
+      target = nearestCardInSection(sections[0], current);
+    } else if (current.matches?.(".view-all")) {
+      target = nearestCardInSection(current.closest(".content-section"), current);
+    } else if (current.matches?.(".content-card")) {
+      const rowIndex = sections.indexOf(current.closest(".content-section"));
+      if (rowIndex >= 0 && rowIndex < sections.length - 1) {
+        target = nearestCardInSection(sections[rowIndex + 1], current);
+      }
+    }
+  } else if (current.matches?.(".content-card")) {
+    const rowIndex = sections.indexOf(current.closest(".content-section"));
+    target = rowIndex === 0
+      ? heroAction
+      : rowIndex > 0 ? nearestCardInSection(sections[rowIndex - 1], current) : null;
+  }
+
+  if (!target) return false;
+  event.preventDefault();
+  target.focus({ preventScroll: true });
+  if (target.closest("#hero")) main.scrollTop = 0;
+  else target.scrollIntoView({ block: "nearest", inline: "nearest" });
+  return true;
+}
+
 function moveFocus(event, key = event.key) {
   const direction = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] }[key];
   if (!direction) return false;
   const current = document.activeElement;
   if (current.matches?.("input:not([type='range']), textarea, [contenteditable='true']")
       && (key === "ArrowLeft" || key === "ArrowRight")) return false;
+  if (moveHomeBetweenRows(event, key, current)) return true;
   const firstContentRail = document.querySelector("#content-rails .content-rail");
   const heroAction = document.querySelector("#hero .hero-actions .focusable");
   if (key === "ArrowUp" && current.matches?.(".content-card")
