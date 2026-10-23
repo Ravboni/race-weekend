@@ -18,6 +18,8 @@ const state = {
   playerTimer: null,
   timelineTimer: null,
   playerLive: false,
+  searchQuery: "",
+  selectedChannelId: "",
 };
 
 function element(tagName, className, text) {
@@ -27,10 +29,10 @@ function element(tagName, className, text) {
   return node;
 }
 
-async function apiRequest(path) {
+async function apiRequest(path, headers = {}) {
   const response = await fetch(`${API_ORIGIN}${path}`, {
     credentials: "include",
-    headers: { accept: "application/json" },
+    headers: { accept: "application/json", ...headers },
   });
   if (!response.ok) throw new Error(`F1 TV returned ${response.status}`);
   const data = await response.json();
@@ -99,6 +101,10 @@ function makeNav() {
     button.addEventListener("click", () => loadPage(entry.uri, entry.title, button));
     nav.append(button);
   });
+  const search = element("button", "nav-button focusable", "Search");
+  search.type = "button";
+  search.addEventListener("click", openSearch);
+  nav.append(search);
 }
 
 function setActiveNav(activeButton) {
@@ -108,10 +114,12 @@ function setActiveNav(activeButton) {
 function setView(name) {
   const home = document.getElementById("home-view");
   const detail = document.getElementById("detail-view");
+  const search = document.getElementById("search-view");
   const player = document.getElementById("player-view");
   const error = document.getElementById("error-view");
   home.hidden = name !== "home";
   detail.hidden = name !== "detail";
+  search.hidden = name !== "search";
   player.hidden = name !== "player";
   error.hidden = name !== "error";
   document.getElementById("main-content").scrollTop = 0;
@@ -266,6 +274,63 @@ async function loadPage(uri, title, activeButton) {
   }
 }
 
+function openSearch() {
+  setView("search");
+  const navButton = [...document.querySelectorAll(".nav-button")].find((button) => button.textContent === "Search");
+  setActiveNav(navButton);
+  document.getElementById("search-input").value = state.searchQuery;
+  document.getElementById("search-input").focus();
+}
+
+function searchItems(data) {
+  const items = [];
+  const seen = new Set();
+  function visit(value, depth = 0) {
+    if (!value || depth > 6 || items.length >= 80) return;
+    if (Array.isArray(value)) {
+      value.slice(0, 120).forEach((child) => visit(child, depth + 1));
+      return;
+    }
+    if (typeof value !== "object") return;
+    if (value.metadata && isVideo(value)) {
+      const id = String(value.metadata.contentId || value.id || "");
+      if (id && !seen.has(id)) { seen.add(id); items.push(value); }
+      return;
+    }
+    ["resultObj", "containers", "items", "retrieveItems"].forEach((key) => visit(value[key], depth + 1));
+  }
+  visit(data);
+  return items;
+}
+
+async function submitSearch(event) {
+  event.preventDefault();
+  const query = document.getElementById("search-input").value.trim();
+  const message = document.getElementById("search-message");
+  const results = document.getElementById("search-results");
+  if (!query) { message.textContent = "Enter a driver, race, show, or documentary."; return; }
+  if (!state.session?.signedIn || !state.session.location) {
+    message.textContent = "Sign in to search the F1 TV catalogue.";
+    beginSignIn();
+    return;
+  }
+  state.searchQuery = query;
+  results.replaceChildren();
+  message.textContent = "Searching F1 TV…";
+  const location = state.session.location;
+  const login = state.session.signedIn ? "R" : "A";
+  const tail = `${encodeURIComponent(location.entitlement)}/${Number(location.groupId)}`;
+  const params = new URLSearchParams({ search: query });
+  try {
+    const data = await apiRequest(`/2.0/${login}/ENG/WEB_DASH/ALL/PAGE/5234/${tail}?${params}`, state.session.headers());
+    const items = searchItems(data);
+    items.forEach((item) => results.append(buildCard(item)));
+    message.textContent = items.length ? `${items.length} results for “${query}”` : `No F1 TV results for “${query}”.`;
+  } catch (error) {
+    message.textContent = error.message || "Search is unavailable right now.";
+  }
+}
+
 async function loadHome() {
   setView("home");
   document.getElementById("content-rails").setAttribute("aria-busy", "true");
@@ -305,8 +370,52 @@ function showDetail(item, fullMetadata) {
   document.getElementById("detail-description").textContent = metadata.longDescription || metadata.shortDescription || eventInfo.Global_Title || "Watch on F1 TV.";
   document.getElementById("detail-note").textContent = metadata.locked ? "This content needs an eligible F1 TV subscription." : "Included with your F1 TV subscription.";
   document.getElementById("play-button").textContent = metadata.locked ? "View subscription options" : "Play";
+  const streams = (metadata.additionalStreams || []).filter((stream) => /^\d{1,12}$/.test(String(stream.channelId || "")));
+  const picker = document.getElementById("channel-picker");
+  const options = document.getElementById("channel-options");
+  options.replaceChildren();
+  state.selectedChannelId = "";
+  if (streams.length > 1) {
+    const selected = streams.find((stream) => stream.default === true)
+      || streams.find((stream) => /F1\s*LIVE/i.test(stream.title || stream.reportingName || ""))
+      || streams.find((stream) => /INTERNATIONAL/i.test(stream.title || stream.reportingName || ""))
+      || streams[0];
+    state.selectedChannelId = String(selected.channelId);
+    streams.forEach((stream) => {
+      const id = String(stream.channelId);
+      const label = String(stream.title || stream.reportingName || stream.type || "Feed").slice(0, 50);
+      const button = element("button", `channel-option focusable${id === state.selectedChannelId ? " is-selected" : ""}`, label);
+      button.type = "button";
+      button.setAttribute("aria-pressed", id === state.selectedChannelId ? "true" : "false");
+      button.addEventListener("click", () => {
+        state.selectedChannelId = id;
+        options.querySelectorAll(".channel-option").forEach((option) => {
+          const active = option === button;
+          option.classList.toggle("is-selected", active);
+          option.setAttribute("aria-pressed", active ? "true" : "false");
+        });
+      });
+      options.append(button);
+    });
+    picker.hidden = false;
+  } else {
+    picker.hidden = true;
+  }
   setView("detail");
   document.getElementById("back-button").focus();
+}
+
+function findContentItem(data, id) {
+  let found = null;
+  function visit(value, depth = 0) {
+    if (!value || found || depth > 7) return;
+    if (Array.isArray(value)) { value.slice(0, 120).forEach((child) => visit(child, depth + 1)); return; }
+    if (typeof value !== "object") return;
+    if (value.metadata && String(value.metadata.contentId || value.id || "") === String(id)) { found = value; return; }
+    ["resultObj", "containers", "items", "retrieveItems"].forEach((key) => visit(value[key], depth + 1));
+  }
+  visit(data);
+  return found;
 }
 
 async function openContent(item) {
@@ -330,7 +439,7 @@ async function openContent(item) {
   if (!id) return;
   try {
     const data = await apiRequest(API.video(id));
-    const fullItem = data.containers?.flatMap((container) => container.retrieveItems?.resultObj?.containers || []).find((candidate) => String(candidate.id) === String(id));
+    const fullItem = findContentItem(data, id);
     if (fullItem && state.selectedItem === item) showDetail(fullItem, fullItem.metadata);
   } catch (_error) {
     // The home feed already contains enough metadata to render the details view.
@@ -433,7 +542,7 @@ async function startPlayback(item) {
   status.textContent = "Requesting your F1 TV stream…";
   setView("player");
   try {
-    const stream = await state.session.play(contentId);
+    const stream = await state.session.play(contentId, state.selectedChannelId);
     if (!window.dashjs?.MediaPlayer) throw new Error("The TV player engine did not load.");
     const player = window.dashjs.MediaPlayer().create();
     state.dashPlayer = player;
@@ -611,6 +720,13 @@ function onRemoteKey(event) {
     return;
   }
   if (event.key === "Escape" || event.key === "Backspace" || event.keyCode === 461) {
+    if (!document.getElementById("search-view").hidden) {
+      event.preventDefault();
+      setView("home");
+      const homeButton = [...document.querySelectorAll(".nav-button")].find((button) => button.dataset.uri === API.home);
+      if (homeButton) setActiveNav(homeButton);
+      return;
+    }
     if (!document.getElementById("detail-view").hidden) {
       event.preventDefault();
       setView("home");
@@ -631,6 +747,8 @@ function onRemoteKey(event) {
 
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("back-button").addEventListener("click", () => setView("home"));
+  document.getElementById("search-back").addEventListener("click", () => setView("home"));
+  document.getElementById("search-form").addEventListener("submit", submitSearch);
   document.getElementById("play-button").addEventListener("click", playSelected);
   document.getElementById("player-back").addEventListener("click", () => { stopPlayback(); setView("detail"); });
   document.getElementById("player-toggle").addEventListener("click", () => {

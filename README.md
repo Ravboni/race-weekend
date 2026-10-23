@@ -4,7 +4,7 @@ An experimental client for rooted LG webOS televisions, starting with the LG C2.
 
 ## Status
 
-The app reads F1 TV's menu and catalogue feeds into its own webOS home, sections, and detail screens. Version 0.4.2 adds F1's phone pairing flow, an encrypted on-device session store, and an in-app DASH/Widevine playback path with full-screen controls. The catalogue, account pairing, and 1080p protected playback have been verified on an LG C2 running webOS 11.2.0. It uses the account's own F1 subscription and the TV's Widevine pipeline. It does not decrypt, record, or redistribute protected streams.
+The app reads F1 TV's menu and catalogue feeds into its own webOS home, sections, and detail screens. Version 0.6.0 adds F1 catalogue search, phone pairing, an encrypted on-device session store, live session feed selection, and an in-app DASH/Widevine player with full-screen and live-window controls. The catalogue, search, account pairing, onboard-feed selection, and 1080p protected playback have been verified on an LG C2 running webOS 11.2.0. It uses the account's own F1 subscription and the TV's Widevine pipeline. It does not decrypt, record, or redistribute protected streams.
 
 ## Development
 
@@ -12,7 +12,7 @@ The app is a standard webOS TV web app. Install LG's current webOS CLI, register
 
 ```sh
 ares-package .
-ares-install -d <device-name> com.ravboni.f1tv.webos_0.4.2_all.ipk
+ares-install -d <device-name> com.ravboni.f1tv.webos_0.6.0_all.ipk
 ```
 
 On a rooted TV, Homebrew Channel / Device Manager can also be used to install a built IPK. Keep the TV's developer or homebrew installation instructions specific to your firmware.

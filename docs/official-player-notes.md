@@ -9,7 +9,9 @@ These notes describe requests observed in the signed-in F1 TV TV-web client on a
 - Pages are returned by paths such as `/2.0/R/ENG/WEB_DASH/ALL/PAGE/{pageId}/PRO/2`.
 - Page sections expose `layout`, `title`, `metadata`, and `retrieveItems`. The items are in `retrieveItems.resultObj.containers`.
 - Video details are returned by `GET /4.0/R/ENG/WEB_DASH/ALL/CONTENT/VIDEO/{contentId}/PRO/2`.
+- Live session details expose `metadata.additionalStreams`, including the F1 international feed, tracker, data channel, and onboard cameras. The app presents those as selectable feeds and sends the selected channel ID with the playback request. Selecting the default F1 LIVE channel and starting its 1080p protected stream were verified on the C2.
 - The webOS app can request the menu, page, and image-resizer endpoints directly with `credentials: include`. The current home screen uses these feeds for its navigation, hero, category rails, and artwork.
+- F1 TV catalogue search uses `GET /2.0/R/ENG/WEB_DASH/ALL/PAGE/5234/{entitlement}/{groupId}?search={query}`. Results use the same content item metadata as catalogue pages.
 
 ## Playback
 

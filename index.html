@@ -32,6 +32,17 @@
           </div>
         </section>
 
+        <section id="search-view" class="search-view" aria-label="Search F1 TV" hidden>
+          <button id="search-back" class="back-button focusable" type="button"><span aria-hidden="true">‹</span> Back</button>
+          <h1 class="search-heading">Search F1 TV</h1>
+          <form id="search-form" class="search-form">
+            <input id="search-input" class="focusable" type="search" autocomplete="off" placeholder="Drivers, races, shows…" aria-label="Search F1 TV">
+            <button class="button button-primary focusable" type="submit">Search</button>
+          </form>
+          <p id="search-message" class="search-message">Search sessions, drivers, shows, and documentaries.</p>
+          <div id="search-results" class="search-results-grid" aria-live="polite"></div>
+        </section>
+
         <section id="player-view" class="player-view" aria-label="F1 TV player" hidden>
           <video id="player-video" class="player-video" playsinline></video>
           <div class="player-chrome">
@@ -59,6 +70,10 @@
             <h1 id="detail-title"></h1>
             <p id="detail-meta" class="detail-meta"></p>
             <p id="detail-description" class="detail-description"></p>
+            <div id="channel-picker" class="channel-picker" hidden>
+              <p class="channel-label">Choose a feed</p>
+              <div id="channel-options" class="channel-options"></div>
+            </div>
             <div class="detail-actions">
               <button id="play-button" class="button button-primary focusable" type="button"><span class="play-icon">▶</span><span>Play</span></button>
               <button id="list-button" class="button button-secondary focusable" type="button"><span class="list-icon">＋</span><span>Add to My List</span></button>
