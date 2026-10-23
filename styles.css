@@ -541,3 +541,83 @@ body { color: var(--ink); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+
+/* Focus uses TV state layers, scale, and elevation instead of selection rings. */
+button:focus, input:focus, select:focus, textarea:focus { outline: none; }
+.focusable:focus { z-index: 3; outline: none; box-shadow: none; }
+.button:focus {
+  transform: scale(1.045);
+  box-shadow: 0 10px 26px rgba(0,0,0,.5);
+}
+.button-primary:focus { background: var(--accent-bright); }
+.button-glass:focus, .button-secondary:focus {
+  border-color: rgba(255,255,255,.58);
+  background: rgba(70,72,80,.92);
+}
+.nav-button:focus {
+  background: rgba(255,255,255,.13);
+  color: #fff;
+  box-shadow: 0 7px 18px rgba(0,0,0,.3);
+}
+.nav-button.active:focus { background: rgba(237,20,59,.36); }
+.content-card:focus {
+  transform: scale(1.055);
+  border-radius: var(--card-radius);
+  box-shadow: 0 18px 34px rgba(0,0,0,.58);
+}
+.content-card:focus .content-card-image {
+  filter: brightness(1.12) saturate(1.08);
+  box-shadow: 0 14px 30px rgba(0,0,0,.5), 0 4px 18px rgba(237,20,59,.18);
+}
+.content-card:focus .content-card-image::after {
+  border-color: transparent;
+  background: linear-gradient(145deg, rgba(237,20,59,.2), transparent 68%);
+}
+.content-card:focus .content-title { color: #ff8295; }
+.player-option:focus {
+  transform: scale(1.035);
+  border-color: rgba(255,255,255,.28);
+  background: var(--surface-hover);
+  color: #fff;
+  box-shadow: 0 10px 24px rgba(0,0,0,.46);
+}
+.player-option.is-selected {
+  border-color: transparent;
+  background: rgba(237,20,59,.2);
+  color: #fff;
+}
+.player-option.is-selected:focus {
+  transform: scale(1.035);
+  border-color: transparent;
+  background: rgba(237,20,59,.34);
+  color: #fff;
+  box-shadow: 0 10px 24px rgba(0,0,0,.46);
+}
+.channel-option:focus {
+  transform: scale(1.045);
+  border-color: transparent;
+  background: var(--surface-hover);
+  color: #fff;
+  box-shadow: 0 10px 24px rgba(0,0,0,.42);
+}
+.channel-option.is-selected:focus { background: rgba(237,20,59,.36); }
+.hero-indicator:focus {
+  transform: scale(1.45);
+  background: var(--accent);
+  box-shadow: 0 4px 12px rgba(0,0,0,.4);
+}
+.hero-indicator.active:focus { background: #fff; }
+.search-form input:focus {
+  border-color: var(--accent-bright);
+  background: var(--surface-raised);
+  box-shadow: 0 8px 22px rgba(0,0,0,.36);
+}
+.player-timeline input:focus { outline: none; filter: drop-shadow(0 0 8px rgba(237,20,59,.95)); }
+
+/* Leave a safe focus gutter around horizontally scrolling cards. */
+.content-rail {
+  margin-inline: -20px;
+  padding: 24px 20px 30px;
+  scroll-padding-inline: 24px;
+}
+.content-card { scroll-margin-inline: 24px; }
