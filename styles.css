@@ -622,15 +622,13 @@ button:focus, input:focus, select:focus, textarea:focus { outline: none; }
 }
 .content-card { scroll-margin-inline: 24px; }
 
-/* Android TV 4-card layout. The guide's 196dp example assumes an 844dp rail.
-   This rail is wider, so size each card from the available rail width and keep
-   four cards visible with a 20px peek of the next one. */
-.content-rail { gap: 20px; }
+/* Scale Android TV's 1080p dp measurements by 2 for the C2's 4K presentation. */
+.content-rail { gap: 40px; }
 .content-card {
   position: relative;
-  width: clamp(124px, calc((89vw - 90px) / 4), 844px);
-  min-width: clamp(124px, calc((89vw - 90px) / 4), 844px);
-  border-radius: 12px;
+  width: 392px;
+  min-width: 392px;
+  border-radius: 24px;
   background: transparent;
   box-shadow: none;
   transform-origin: center center;
@@ -640,7 +638,7 @@ button:focus, input:focus, select:focus, textarea:focus { outline: none; }
   width: 100%;
   height: auto;
   aspect-ratio: 16 / 9;
-  border-radius: 12px;
+  border-radius: 24px;
   background-image: var(--card-image);
   box-shadow: none;
   transition: box-shadow .16s ease, filter .16s ease;
@@ -652,45 +650,47 @@ button:focus, input:focus, select:focus, textarea:focus { outline: none; }
 }
 .content-card-copy {
   display: flex;
-  min-height: 48px;
+  min-height: 96px;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
-  padding: 8px 0 0;
+  gap: 0;
+  padding: 16px 0 0;
   text-align: center;
 }
 .content-series { display: none; }
 .content-title {
   width: 100%;
   color: var(--ink);
-  font-size: 20px;
+  font-size: 32px;
   font-weight: 700;
-  line-height: 24px;
+  line-height: 40px;
 }
 .content-subtitle {
   width: 100%;
   margin: 0;
   color: var(--ink-muted);
-  font-size: 16px;
-  line-height: 16px;
+  font-size: 28px;
+  line-height: 40px;
 }
 .content-card:focus {
   z-index: 4;
   transform: scale(1.08);
-  border-radius: 12px;
+  border-radius: 24px;
   box-shadow: none;
 }
 .content-card:focus .content-card-image {
   filter: none;
-  box-shadow: 0 0 22px 5px rgba(237,20,59,.52), 0 10px 22px rgba(0,0,0,.4);
+  box-shadow: 0 0 44px 10px rgba(237,20,59,.52), 0 20px 44px rgba(0,0,0,.4);
 }
 .content-card:focus .content-card-image::after {
-  border: 3px solid #fff;
+  border: 6px solid #fff;
   background: none;
 }
 .content-card:focus .content-title { color: var(--ink); }
 .content-card:active { transform: scale(1.02); }
 .content-card:active .content-card-image {
-  box-shadow: 0 0 0 3px #85858d, 0 8px 18px rgba(0,0,0,.38);
+  box-shadow: 0 0 0 6px #85858d, 0 16px 36px rgba(0,0,0,.38);
 }
-.content-card:active .content-card-image::after { border: 3px solid #85858d; }
+.content-card:active .content-card-image::after { border: 6px solid #85858d; }
+.live-label, .duration-label { bottom: 22px; padding: 14px 20px; border-radius: 10px; font-size: 24px; }
+.live-label { top: 22px; right: 22px; bottom: auto; }
