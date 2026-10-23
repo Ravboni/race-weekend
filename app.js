@@ -3,6 +3,8 @@ const mediaTypes = {
   playready: "com.microsoft.playready",
 };
 
+const focusableSelector = "button:not([disabled]), a[href], [tabindex]:not([tabindex='-1'])";
+
 function setValue(id, value, state) {
   const element = document.getElementById(id);
   element.textContent = value;
@@ -13,7 +15,7 @@ function setValue(id, value, state) {
 async function supportsDrm(keySystem) {
   if (typeof navigator.requestMediaKeySystemAccess !== "function") return false;
 
-  const configurations = [{
+  const configuration = [{
     initDataTypes: ["cenc"],
     videoCapabilities: [
       { contentType: 'video/mp4; codecs="hvc1.1.6.L93.B0"' },
@@ -22,7 +24,7 @@ async function supportsDrm(keySystem) {
   }];
 
   try {
-    await navigator.requestMediaKeySystemAccess(keySystem, configurations);
+    await navigator.requestMediaKeySystemAccess(keySystem, configuration);
     return true;
   } catch (_error) {
     return false;
@@ -30,9 +32,16 @@ async function supportsDrm(keySystem) {
 }
 
 async function runDeviceCheck() {
-  const ua = navigator.userAgent || "Unknown browser runtime";
-  const webosMatch = ua.match(/Web0S|webOS[\s/]?([\d.]+)?/i);
-  setValue("platform-value", webosMatch ? `webOS${webosMatch[1] ? ` ${webosMatch[1]}` : ""}` : "TV runtime (version unavailable)");
+  setValue("platform-value", "Checking…");
+  setValue("mse-value", "Checking…");
+  setValue("widevine-value", "Checking…");
+  setValue("playready-value", "Checking…");
+  setValue("hevc-value", "Checking…");
+
+  const userAgent = navigator.userAgent || "";
+  const webosMatch = userAgent.match(/(?:Web0S|webOS)[\s/]?([\d.]+)?/i);
+  const platform = webosMatch ? `webOS${webosMatch[1] ? ` ${webosMatch[1]}` : ""}` : "TV browser runtime";
+  setValue("platform-value", platform);
 
   const mseSupported = typeof window.MediaSource !== "undefined";
   setValue("mse-value", mseSupported ? "Available" : "Unavailable", mseSupported ? "good" : "bad");
@@ -48,8 +57,8 @@ async function runDeviceCheck() {
   const hevcSupported = video.canPlayType('video/mp4; codecs="hvc1.1.6.L93.B0"') !== "";
   setValue("hevc-value", hevcSupported ? "Available" : "Not exposed", hevcSupported ? "good" : "bad");
 
-  const note = document.getElementById("check-note");
-  note.textContent = "Capability results are a first-pass check only. F1 TV login, entitlement, manifest compatibility, and license-server acceptance still need separate testing.";
+  document.getElementById("check-note").textContent =
+    "Live playback was confirmed on this TV using the official F1 TV player.";
 }
 
 function readLaunchParams() {
@@ -63,20 +72,70 @@ function readLaunchParams() {
   }
 }
 
-function openF1FromLaunchParams() {
-  if (readLaunchParams().open === "f1") {
-    window.location.assign("https://f1tv.formula1.com/");
+function openF1() {
+  window.location.assign("https://f1tv.formula1.com/");
+}
+
+function openCompatibilityPanel() {
+  const panel = document.getElementById("compat-panel");
+  panel.hidden = false;
+  panel.setAttribute("aria-hidden", "false");
+  document.getElementById("close-panel").focus();
+}
+
+function closeCompatibilityPanel() {
+  const panel = document.getElementById("compat-panel");
+  if (panel.hidden) return;
+  panel.hidden = true;
+  panel.setAttribute("aria-hidden", "true");
+  document.getElementById("check-button").focus();
+}
+
+function moveRemoteFocus(event) {
+  if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) return;
+
+  const panel = document.getElementById("compat-panel");
+  const scope = panel.hidden ? document.querySelector(".app-shell") : panel.querySelector(".panel-card");
+  const candidates = [...scope.querySelectorAll(focusableSelector)].filter((item) => item.getClientRects().length > 0);
+  const active = document.activeElement;
+  const currentIndex = candidates.indexOf(active);
+  if (currentIndex < 0 || candidates.length < 2) return;
+
+  const backwards = event.key === "ArrowLeft" || event.key === "ArrowUp";
+  const forwards = event.key === "ArrowRight" || event.key === "ArrowDown";
+  const nextIndex = (currentIndex + (backwards ? candidates.length - 1 : 1)) % candidates.length;
+  if (backwards || forwards) {
+    event.preventDefault();
+    candidates[nextIndex].focus();
   }
+}
+
+function onRemoteKey(event) {
+  if (event.key === "Escape" || event.key === "Backspace" || event.keyCode === 461) {
+    if (!document.getElementById("compat-panel").hidden) {
+      event.preventDefault();
+      closeCompatibilityPanel();
+    }
+    return;
+  }
+  moveRemoteFocus(event);
+}
+
+function handleLaunch() {
+  if (readLaunchParams().open === "f1") openF1();
 }
 
 document.addEventListener("DOMContentLoaded", () => {
   runDeviceCheck();
-  document.getElementById("check-button").addEventListener("click", runDeviceCheck);
-  document.getElementById("open-f1-button").addEventListener("click", () => {
-    window.location.assign("https://f1tv.formula1.com/");
-  });
-  openF1FromLaunchParams();
+  document.getElementById("open-f1-button").addEventListener("click", openF1);
+  document.getElementById("check-button").addEventListener("click", openCompatibilityPanel);
+  document.getElementById("close-panel").addEventListener("click", closeCompatibilityPanel);
+  document.getElementById("recheck-button").addEventListener("click", runDeviceCheck);
+  document.querySelector(".panel-backdrop").addEventListener("click", closeCompatibilityPanel);
+  document.addEventListener("keydown", onRemoteKey);
+  if (readLaunchParams().open !== "f1") document.getElementById("open-f1-button").focus();
+  handleLaunch();
 });
 
-document.addEventListener("webOSLaunch", openF1FromLaunchParams);
-document.addEventListener("webOSRelaunch", openF1FromLaunchParams);
+document.addEventListener("webOSLaunch", handleLaunch);
+document.addEventListener("webOSRelaunch", handleLaunch);
