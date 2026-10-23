@@ -1,6 +1,6 @@
 :root {
   color-scheme: dark;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: Roboto, Arial, Helvetica, sans-serif;
   color: #f5f5f7;
   background: #090a0e;
   font-synthesis: none;
@@ -792,3 +792,140 @@ button:focus, input:focus, select:focus, textarea:focus { outline: none; }
   scroll-padding-inline: 112px;
 }
 .content-card { scroll-margin: 96px 112px; }
+
+/* Android TV's 960×540dp layout mapped to this app's 1920×1080 CSS viewport. */
+:root {
+  --tv-css-pixels-per-dp: 2px;
+  --tv-safe-x: 116px; /* 58dp */
+  --tv-safe-y: 56px;  /* 28dp */
+  --tv-column: 104px; /* 52dp */
+  --tv-gutter: 40px;  /* 20dp */
+  --tv-label: 28px;   /* 14sp */
+  --tv-body: 32px;    /* 16sp */
+  --tv-body-large: 36px; /* 18sp */
+  --tv-title: 48px;   /* 24sp */
+  --tv-headline: 64px;/* 32sp */
+}
+
+/* Keep core content aligned to the 12-column grid and overscan-safe area. */
+.topbar {
+  height: 112px;
+  min-height: 112px;
+  padding-inline: var(--tv-safe-x);
+}
+.primary-nav { max-width: calc(100vw - 464px); gap: 32px; }
+.nav-button { min-height: 64px; padding: 12px 32px; font-size: var(--tv-body); line-height: 40px; }
+.profile-chip { width: 96px; height: 96px; min-height: 96px; padding: 8px; }
+.profile-avatar { width: 80px; height: 80px; }
+.profile-avatar svg { width: 48px; height: 48px; }
+
+.home-view { padding-bottom: 96px; }
+.hero { height: min(600px, 56vh); min-height: 520px; }
+.hero-copy {
+  width: min(1112px, calc(100vw - 232px));
+  padding: 48px 0 64px var(--tv-safe-x);
+}
+.hero-badge { gap: 16px; margin-bottom: 28px; font-size: 24px; }
+.hero-badge.is-live::before { width: 14px; height: 14px; }
+.hero-grand-prix { margin-bottom: 16px; font-size: 32px; }
+.hero-title { max-width: 1000px; font-size: clamp(72px, 5vw, 96px); line-height: 1.02; }
+.hero-description { max-width: 880px; margin: 28px 0 36px; font-size: var(--tv-body-large); line-height: 1.5; }
+.hero-actions, .detail-actions { gap: 24px; }
+.button { min-width: 200px; min-height: 96px; gap: 16px; padding-inline: 32px; font-size: var(--tv-body); }
+.play-icon { font-size: 28px; }
+.hero-indicators { right: var(--tv-safe-x); bottom: var(--tv-safe-y); gap: 16px; }
+.hero-indicator, .hero-indicator.active { width: 16px; height: 16px; flex-basis: 16px; }
+
+.content-rails { padding-inline: var(--tv-safe-x); }
+.content-section { margin-top: 40px; }
+.section-header { margin-bottom: 20px; }
+.section-title { font-size: 40px; }
+.view-all { min-height: 64px; padding-inline: 24px; font-size: var(--tv-label); }
+.content-rail { gap: var(--tv-gutter); }
+.content-card { width: 392px; min-width: 392px; }
+.content-card-copy { min-height: 112px; padding-top: 16px; }
+.content-title { font-size: 36px; line-height: 44px; max-height: 88px; }
+.content-subtitle { margin-top: 4px; font-size: var(--tv-label); line-height: 40px; max-height: 80px; }
+.live-label, .duration-label { bottom: 20px; padding: 12px 16px; font-size: var(--tv-label); }
+.live-label { top: 20px; right: 20px; }
+
+.page-label { margin: 56px var(--tv-safe-x) 32px; font-size: var(--tv-title); }
+.search-view { padding: var(--tv-safe-y) var(--tv-safe-x) 80px; }
+.search-view > .back-button { margin-bottom: 20px; }
+.search-heading { margin-bottom: 32px; font-size: var(--tv-title); }
+.search-form { max-width: 1112px; gap: 20px; }
+.search-form input { height: 80px; padding-inline: 24px; font-size: var(--tv-body); }
+.search-form .button { min-width: 176px; }
+.search-message { min-height: 36px; margin: 24px 0 32px; font-size: var(--tv-label); }
+.search-results-grid {
+  max-width: calc(100vw - var(--tv-safe-x) - var(--tv-safe-x));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 40px;
+}
+
+.detail-content {
+  width: min(1112px, calc(100vw - var(--tv-safe-x) - var(--tv-safe-x)));
+  padding: var(--tv-safe-y) 0 64px var(--tv-safe-x);
+}
+.back-button { min-height: 64px; gap: 16px; margin-bottom: 40px; font-size: var(--tv-label); }
+.back-button span { font-size: 40px; }
+.detail-eyebrow { margin-bottom: 20px; font-size: var(--tv-label); }
+.detail-content h1, .error-view h1 { font-size: clamp(64px, 4.5vw, 88px); line-height: 1.08; }
+.detail-meta { margin-top: 24px; font-size: var(--tv-body-large); }
+.detail-description { max-width: 1000px; margin: 28px 0 36px; font-size: var(--tv-body); line-height: 1.5; }
+.channel-picker { margin-bottom: 32px; }
+.channel-label { margin-bottom: 16px; font-size: var(--tv-label); }
+.channel-options { gap: 16px; padding: 8px 6px 16px; }
+.channel-option { min-height: 80px; padding-inline: 24px; font-size: var(--tv-label); }
+.detail-note { margin-top: 24px; font-size: var(--tv-label); }
+.error-view { max-width: 1112px; margin: 14vh auto; padding-inline: var(--tv-safe-x); }
+.error-view .detail-description { margin-inline: auto; }
+.error-view .button { margin-top: 24px; }
+
+.player-chrome { padding: var(--tv-safe-y) var(--tv-safe-x); }
+.player-chrome .back-button { min-height: 72px; }
+.player-status { gap: 16px; font-size: var(--tv-label); }
+.player-live-dot { width: 14px; height: 14px; }
+.player-chrome h1 { margin: 8px 0 28px; font-size: var(--tv-title); }
+.player-controls { gap: 20px; }
+.player-controls .button { min-width: 176px; }
+.player-timeline { gap: 24px; margin-top: 20px; font-size: var(--tv-label); }
+.player-timeline input { width: min(960px, 68vw); height: 12px; }
+.player-timeline input::-webkit-slider-thumb { width: 32px; height: 32px; }
+.player-options { width: min(768px, 42vw); padding: 48px 40px 56px; }
+.player-options h2 { font-size: 40px; }
+.player-options h3 { margin: 32px 0 16px; font-size: var(--tv-label); }
+.player-option-list { gap: 16px; }
+.player-option { min-height: 96px; gap: 20px; padding: 16px 24px; font-size: var(--tv-body); }
+.player-source-icon, .player-driver-dot { width: 36px; height: 36px; flex-basis: 36px; }
+.player-options #player-audio-options .player-option,
+.player-options #player-subtitle-options .player-option { min-height: 80px; font-size: var(--tv-label); }
+.player-source-divider { margin: 16px auto 20px; }
+.player-options-note { margin: 8px 0; font-size: 24px; line-height: 1.5; }
+.player-error { padding: 56px; font-size: var(--tv-body); line-height: 1.5; }
+
+.sign-in-dialog { padding: var(--tv-safe-y) var(--tv-safe-x); }
+.sign-in-card { width: min(760px, 80vw); padding: 56px; }
+.sign-in-card h2 { font-size: var(--tv-title); line-height: 1.2; }
+.sign-in-card > p:not(.detail-eyebrow):not(.pairing-code) { font-size: var(--tv-body); }
+.sign-in-card canvas { width: 320px; height: 320px; margin: 32px auto 16px; }
+.pairing-code { font-size: 48px; }
+.pairing-status { min-height: 40px; }
+.sign-in-card .button { margin-top: 24px; }
+.sign-out-card { width: min(820px, 80vw); padding: 56px; }
+.sign-out-card h2 { font-size: var(--tv-title); }
+.sign-out-actions { gap: 32px; margin-top: 40px; }
+.sign-out-actions .button { min-width: 240px; min-height: 96px; font-size: var(--tv-body); }
+.toast { right: var(--tv-safe-x); bottom: var(--tv-safe-y); max-width: 800px; padding: 24px 32px; font-size: var(--tv-label); }
+.loading-state { min-height: 400px; gap: 20px; font-size: var(--tv-body); }
+.loading-spinner { width: 32px; height: 32px; border-width: 4px; }
+
+@media (min-width: 1600px) {
+  .topbar { height: 112px; min-height: 112px; }
+  .nav-button { min-height: 64px; padding: 12px 32px; font-size: var(--tv-body); line-height: 40px; }
+  .profile-chip { width: 96px; height: 96px; min-height: 96px; }
+  .profile-avatar { width: 80px; height: 80px; }
+  .profile-avatar svg { width: 48px; height: 48px; }
+  .hero { height: min(600px, 56vh); min-height: 520px; }
+  .content-card { width: 392px; min-width: 392px; }
+}
