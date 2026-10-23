@@ -16,8 +16,12 @@ cp "${ROOT_DIR}/appinfo.json" \
    "${ROOT_DIR}/auth.js" \
    "${ROOT_DIR}/styles.css" \
    "${ROOT_DIR}/icon.png" \
+   "${ROOT_DIR}/largeIcon.png" \
    "${STAGE_DIR}/"
-cp -R "${ROOT_DIR}/assets" "${ROOT_DIR}/vendor" "${STAGE_DIR}/"
+# The brand artwork is used by this README; the TV launcher consumes the two
+# correctly-sized root icons above. Only the font assets ship at runtime.
+mkdir -p "${STAGE_DIR}/assets"
+cp -R "${ROOT_DIR}/assets/fonts" "${ROOT_DIR}/vendor" "${STAGE_DIR}/"
 
 ares-package --no-minify -o "${DIST_DIR}" "${STAGE_DIR}"
 

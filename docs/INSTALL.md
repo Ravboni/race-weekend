@@ -51,7 +51,7 @@ ares-setup-device
 Install and launch the package, replacing the device name and filename with yours:
 
 ```sh
-ares-install --device myTV ./com.ravboni.f1tv.webos_0.16.22_all.ipk
+ares-install --device myTV ./com.ravboni.f1tv.webos_0.16.23_all.ipk
 ares-launch --device myTV com.ravboni.f1tv.webos
 ```
 
