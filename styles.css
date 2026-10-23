@@ -1147,4 +1147,5 @@ button:focus, input:focus, select:focus, textarea:focus { outline: none; }
   box-shadow: 0 0 0 3px rgba(237,20,59,.82), 0 8px 20px rgba(0,0,0,.38);
   transform: scale(1.04);
 }
-.main-content { scroll-padding-top: 40px; }
+.topbar { margin-bottom: 48px; } /* fixed 24dp breathing room below the tabs */
+.hero { margin-top: 8px; } /* preserve its existing position on initial load */

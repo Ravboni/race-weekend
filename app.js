@@ -1123,30 +1123,8 @@ function focusables() {
     .filter((node) => !node.disabled && !node.closest("[hidden]") && node.getClientRects().length > 0);
 }
 
-function revealFocusTarget(target, topbarControl = null) {
-  const main = document.getElementById("main-content");
+function revealFocusTarget(target) {
   target.scrollIntoView({ block: "nearest", inline: "nearest" });
-  if (!main.contains(target)) return;
-
-  // Some webOS builds ignore scroll-padding when scrollIntoView uses "nearest".
-  // Keep a rail's heading below the tabs too; positioning only its card leaves
-  // the heading clipped against the top edge on the next scroll step.
-  const viewport = main.getBoundingClientRect();
-  const section = target.closest(".content-section");
-  const anchor = section?.querySelector(".section-header") || target;
-  const rect = anchor.getBoundingClientRect();
-  const activeTab = document.querySelector(".topbar .nav-button.active");
-  const control = topbarControl?.closest(".topbar")
-    ? topbarControl
-    : activeTab || document.getElementById("account-button");
-  const controlBottom = control?.getBoundingClientRect().bottom || viewport.top;
-  const safeTop = Math.max(viewport.top, controlBottom) + 40;
-  const safeBottom = viewport.bottom - 24;
-  if (rect.top < safeTop) {
-    main.scrollTop -= safeTop - rect.top;
-  } else if (target.getBoundingClientRect().bottom > safeBottom) {
-    main.scrollTop += target.getBoundingClientRect().bottom - safeBottom;
-  }
 }
 
 function nearestCardInSection(section, reference) {
@@ -1195,7 +1173,7 @@ function moveHomeBetweenRows(event, key, current) {
   event.preventDefault();
   target.focus({ preventScroll: true });
   if (target.closest("#hero")) main.scrollTop = 0;
-  else revealFocusTarget(target, current.closest(".topbar") ? current : null);
+  else revealFocusTarget(target);
   return true;
 }
 
@@ -1257,7 +1235,7 @@ function moveFocus(event, key = event.key) {
       // Restore the home scroll origin when D-pad focus returns to the hero.
       document.getElementById("main-content").scrollTop = 0;
     } else {
-      revealFocusTarget(best, current.closest(".topbar") ? current : null);
+      revealFocusTarget(best);
     }
   }
   return true;
