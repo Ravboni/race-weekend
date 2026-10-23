@@ -115,7 +115,12 @@ function makeNav() {
 }
 
 function setActiveNav(activeButton) {
-  document.querySelectorAll(".nav-button").forEach((button) => button.classList.toggle("active", button === activeButton));
+  document.querySelectorAll(".nav-button").forEach((button) => {
+    const active = button === activeButton;
+    button.classList.toggle("active", active);
+    if (active) button.setAttribute("aria-current", "page");
+    else button.removeAttribute("aria-current");
+  });
 }
 
 function setView(name, { pushHistory = true } = {}) {

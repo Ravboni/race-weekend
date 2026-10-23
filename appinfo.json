@@ -1,6 +1,6 @@
 {
   "id": "com.ravboni.f1tv.webos",
-  "version": "0.12.0",
+  "version": "0.13.1",
   "vendor": "Ravboni",
   "type": "web",
   "main": "index.html",

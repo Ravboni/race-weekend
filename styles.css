@@ -18,9 +18,11 @@ button { color: inherit; font: inherit; }
 .brand-mark { color: #ed143b; font-size: 34px; font-style: italic; font-weight: 900; letter-spacing: -.16em; transform: skew(-9deg); }
 .brand-name { margin-left: 8px; font-size: 23px; font-weight: 800; letter-spacing: .04em; }
 .primary-nav { display: flex; height: 100%; flex: 1; align-items: center; gap: 26px; }
-.nav-button { position: relative; height: 100%; padding: 0 1px; border: 0; background: transparent; color: #a4a5ad; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap; }
+.nav-button { position: relative; height: 100%; padding: 0 1px; border: 2px solid transparent; background: transparent; color: #a4a5ad; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap; }
 .nav-button:hover, .nav-button.active { color: #fff; }
-.nav-button.active::after { position: absolute; right: 0; bottom: 0; left: 0; height: 3px; background: #e10628; content: ""; }
+.nav-button:focus { outline: none; border-radius: 999px; border-color: #fff; background: rgba(255,255,255,.12); box-shadow: 0 6px 16px rgba(0,0,0,.28); }
+.nav-button.active { border-radius: 999px; background: var(--accent); }
+.nav-button.active:focus { background: var(--accent); }
 .profile-chip { display: flex; flex: 0 0 auto; align-items: center; gap: 10px; padding: 5px; border: 0; border-radius: 20px; background: transparent; color: #c4c5cc; cursor: pointer; font-size: 12px; }
 .profile-avatar { display: inline-flex; width: 34px; height: 34px; align-items: center; justify-content: center; border: 1px solid #45464d; border-radius: 50%; background: linear-gradient(135deg,#383941,#17181d); color: #fff; font-size: 13px; font-weight: 700; }
 
@@ -140,7 +142,6 @@ button { color: inherit; font: inherit; }
 
 .focusable:focus { z-index: 3; outline: none; box-shadow: 0 0 0 3px #ed143b, 0 8px 22px rgba(0,0,0,.42); }
 .button:focus { transform: scale(1.04); box-shadow: 0 0 0 3px #fff, 0 0 0 6px #ed143b, 0 10px 24px rgba(0,0,0,.42); }
-.nav-button:focus { border-radius: 7px; background: rgba(225,6,40,.16); box-shadow: inset 0 -4px #ed143b, 0 0 0 2px rgba(237,20,59,.65); }
 .content-card:focus { transform: scale(1.04); border-radius: 10px; box-shadow: 0 0 0 4px #ed143b, 0 12px 28px rgba(0,0,0,.5); }
 .player-option:focus { transform: scale(1.035); border-color: #ed143b; background: #4a1822; color: #fff; box-shadow: 0 0 0 2px #ed143b, 0 9px 22px rgba(0,0,0,.4); }
 .player-option.is-selected:focus { border-color: #ed143b; background: #fff; color: #121216; box-shadow: 0 0 0 3px #ed143b, 0 9px 22px rgba(0,0,0,.4); }
@@ -289,15 +290,14 @@ body { color: var(--ink); }
 .nav-button {
   height: auto;
   min-height: 56px;
-  padding: 0 15px;
-  border-radius: 12px;
+  padding: 0 20px;
+  border-radius: 999px;
   color: var(--ink-muted);
   font-size: 18px;
-  transition: color .15s ease, background .15s ease, transform .15s ease, box-shadow .15s ease;
+  transition: color .15s ease, background .15s ease, transform .15s ease, border-color .15s ease, box-shadow .15s ease;
 }
 .nav-button:hover, .nav-button.active { color: #fff; }
-.nav-button.active { background: rgba(237,20,59,.12); }
-.nav-button.active::after { right: 16px; bottom: 2px; left: 16px; height: 3px; border-radius: 3px; background: var(--accent); }
+.nav-button.active { background: var(--accent); }
 .profile-chip { min-height: 64px; padding: 7px 13px 7px 7px; border-radius: 999px; font-size: 16px; }
 .profile-avatar { width: 42px; height: 42px; border-color: rgba(255,255,255,.22); background: linear-gradient(145deg,#3b3e48,#1b1d24); }
 
@@ -415,7 +415,8 @@ body { color: var(--ink); }
 /* Reusable TV focus: scale the target and keep a crisp red/white boundary. */
 .focusable:focus { outline: none; box-shadow: 0 0 0 3px var(--focus-ring), 0 10px 25px rgba(0,0,0,.46); }
 .button:focus { transform: scale(1.06); box-shadow: 0 0 0 3px #fff, 0 0 0 7px var(--accent), 0 12px 28px rgba(0,0,0,.46); }
-.nav-button:focus { transform: scale(1.06); border-radius: 12px; background: rgba(237,20,59,.24); box-shadow: 0 0 0 2px #fff, 0 0 0 5px var(--accent); }
+.nav-button:focus { transform: scale(1.04); border-color: #fff; border-radius: 999px; background: rgba(255,255,255,.12); box-shadow: 0 6px 16px rgba(0,0,0,.28); }
+.nav-button.active:focus { background: var(--accent); }
 .content-card:focus { transform: scale(1.055); border-radius: var(--card-radius); box-shadow: 0 0 0 4px #fff, 0 0 0 8px var(--accent), 0 16px 34px rgba(0,0,0,.56); }
 .content-card:focus .content-card-image { filter: brightness(1.12); }
 .player-option:focus { transform: scale(1.04); border-color: var(--accent-bright); background: #491723; color: #fff; box-shadow: 0 0 0 2px #fff, 0 0 0 5px var(--accent), 0 10px 24px rgba(0,0,0,.44); }
