@@ -1047,7 +1047,7 @@ button:focus, input:focus, select:focus, textarea:focus { outline: none; }
 .primary-nav { height: 64px; }
 
 /* Match the reference row rhythm while reserving only the focus glow that is needed. */
-.content-section { margin-top: 80px; } /* 40dp between the end of one row and the next heading */
+.content-section { margin-top: 56px; } /* 28dp + the 12dp rail gutter = 40dp after each card */
 #content-rails > .content-section:first-child { margin-top: 40px; }
 .section-header { margin-bottom: 16px; } /* 8dp */
 .content-rail {
