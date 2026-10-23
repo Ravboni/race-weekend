@@ -20,9 +20,9 @@ button { color: inherit; font: inherit; }
 .primary-nav { display: flex; height: 100%; flex: 1; align-items: center; gap: 26px; }
 .nav-button { position: relative; height: 100%; padding: 0 1px; border: 2px solid transparent; background: transparent; color: #a4a5ad; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap; }
 .nav-button:hover, .nav-button.active { color: #fff; }
-.nav-button:focus { outline: none; border-radius: 999px; border-color: #fff; background: rgba(255,255,255,.12); box-shadow: 0 6px 16px rgba(0,0,0,.28); }
-.nav-button.active { border-radius: 999px; background: var(--accent); }
-.nav-button.active:focus { background: var(--accent); }
+.nav-button:focus { outline: none; border-radius: 999px; border-color: transparent; background: rgba(255,255,255,.10); box-shadow: none; transform: scale(1.04); }
+.nav-button.active { border-radius: 999px; background: rgba(237,20,59,.22); }
+.nav-button.active:focus { background: rgba(237,20,59,.34); }
 .profile-chip { display: flex; flex: 0 0 auto; align-items: center; gap: 10px; padding: 5px; border: 0; border-radius: 20px; background: transparent; color: #c4c5cc; cursor: pointer; font-size: 12px; }
 .profile-avatar { display: inline-flex; width: 34px; height: 34px; align-items: center; justify-content: center; border: 1px solid #45464d; border-radius: 50%; background: linear-gradient(135deg,#383941,#17181d); color: #fff; font-size: 13px; font-weight: 700; }
 
@@ -297,7 +297,7 @@ body { color: var(--ink); }
   transition: color .15s ease, background .15s ease, transform .15s ease, border-color .15s ease, box-shadow .15s ease;
 }
 .nav-button:hover, .nav-button.active { color: #fff; }
-.nav-button.active { background: var(--accent); }
+.nav-button.active { background: rgba(237,20,59,.22); }
 .profile-chip { min-height: 64px; padding: 7px 13px 7px 7px; border-radius: 999px; font-size: 16px; }
 .profile-avatar { width: 42px; height: 42px; border-color: rgba(255,255,255,.22); background: linear-gradient(145deg,#3b3e48,#1b1d24); }
 
@@ -415,8 +415,8 @@ body { color: var(--ink); }
 /* Reusable TV focus: scale the target and keep a crisp red/white boundary. */
 .focusable:focus { outline: none; box-shadow: 0 0 0 3px var(--focus-ring), 0 10px 25px rgba(0,0,0,.46); }
 .button:focus { transform: scale(1.06); box-shadow: 0 0 0 3px #fff, 0 0 0 7px var(--accent), 0 12px 28px rgba(0,0,0,.46); }
-.nav-button:focus { transform: scale(1.04); border-color: #fff; border-radius: 999px; background: rgba(255,255,255,.12); box-shadow: 0 6px 16px rgba(0,0,0,.28); }
-.nav-button.active:focus { background: var(--accent); }
+.nav-button:focus { transform: scale(1.04); border-color: transparent; border-radius: 999px; background: rgba(255,255,255,.10); box-shadow: none; }
+.nav-button.active:focus { background: rgba(237,20,59,.34); }
 .content-card:focus { transform: scale(1.055); border-radius: var(--card-radius); box-shadow: 0 0 0 4px #fff, 0 0 0 8px var(--accent), 0 16px 34px rgba(0,0,0,.56); }
 .content-card:focus .content-card-image { filter: brightness(1.12); }
 .player-option:focus { transform: scale(1.04); border-color: var(--accent-bright); background: #491723; color: #fff; box-shadow: 0 0 0 2px #fff, 0 0 0 5px var(--accent), 0 10px 24px rgba(0,0,0,.44); }
