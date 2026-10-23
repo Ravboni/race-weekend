@@ -1045,3 +1045,17 @@ button:focus, input:focus, select:focus, textarea:focus { outline: none; }
   background: transparent;
 }
 .primary-nav { height: 64px; }
+
+/* Match the reference row rhythm while reserving only the focus glow that is needed. */
+.content-section { margin-top: 80px; } /* 40dp between the end of one row and the next heading */
+#content-rails > .content-section:first-child { margin-top: 40px; }
+.section-header { margin-bottom: 16px; } /* 8dp */
+.content-rail {
+  padding-block: 24px; /* 12dp above/below the cards for their focus scale and glow */
+  scroll-padding-block: 24px;
+}
+.content-card { scroll-margin-block: 24px; }
+.content-card:focus { transform: scale(1.06); }
+.content-card:focus .content-card-image {
+  box-shadow: 0 0 12px rgba(237,20,59,.58), 0 4px 8px rgba(0,0,0,.36);
+}
