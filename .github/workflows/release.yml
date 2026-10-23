@@ -33,7 +33,7 @@ jobs:
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          name: F1 TV for webOS ${{ github.ref_name }}
+          name: Race Weekend Viewer ${{ github.ref_name }}
           generate_release_notes: true
           files: |
             dist/*.ipk
