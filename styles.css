@@ -621,3 +621,93 @@ button:focus, input:focus, select:focus, textarea:focus { outline: none; }
   scroll-padding-inline: 24px;
 }
 .content-card { scroll-margin-inline: 24px; }
+
+/* Android TV Standard Card measurements (CSS px map to dp in webOS's 1920x1080 viewport).
+   The C2 uses the guide's 4-card width; the other viewport ranges use its alternate layouts. */
+.content-rail { gap: 20px; }
+.content-card {
+  position: relative;
+  width: 268px;
+  min-width: 268px;
+  border-radius: 12px;
+  background: transparent;
+  box-shadow: none;
+  transform-origin: center center;
+  transition: transform .16s ease;
+}
+.content-card-image {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  background-image: var(--card-image);
+  box-shadow: none;
+  transition: box-shadow .16s ease, filter .16s ease;
+}
+.content-card-image::after {
+  border: 0 solid transparent;
+  border-radius: inherit;
+  transition: border-color .16s ease;
+}
+.content-card-copy {
+  display: flex;
+  min-height: 48px;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 0 0;
+  text-align: center;
+}
+.content-series { display: none; }
+.content-title {
+  width: 100%;
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 20px;
+}
+.content-subtitle {
+  width: 100%;
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 14px;
+  line-height: 17px;
+}
+.content-card:focus {
+  z-index: 4;
+  transform: scale(1.08);
+  border-radius: 12px;
+  box-shadow: none;
+}
+.content-card:focus .content-card-image {
+  filter: none;
+  box-shadow: 0 0 22px 5px rgba(237,20,59,.52), 0 10px 22px rgba(0,0,0,.4);
+}
+.content-card:focus .content-card-image::after {
+  border: 3px solid #fff;
+  background: none;
+}
+.content-card:focus .content-title { color: var(--ink); }
+.content-card:active { transform: scale(1.02); }
+.content-card:active .content-card-image {
+  box-shadow: 0 0 0 3px #85858d, 0 8px 18px rgba(0,0,0,.38);
+}
+.content-card:active .content-card-image::after { border: 3px solid #85858d; }
+
+@media (min-width: 2600px) {
+  .content-card { width: 844px; min-width: 844px; }
+}
+@media (min-width: 2300px) and (max-width: 2599px) {
+  .content-card { width: 412px; min-width: 412px; }
+}
+@media (min-width: 2000px) and (max-width: 2299px) {
+  .content-card { width: 268px; min-width: 268px; }
+}
+@media (min-width: 1200px) and (max-width: 1999px) {
+  .content-card { width: 196px; min-width: 196px; }
+}
+@media (max-width: 1199px) {
+  .content-card { width: 124px; min-width: 124px; }
+  .content-title { font-size: 14px; }
+  .content-subtitle { font-size: 12px; }
+}

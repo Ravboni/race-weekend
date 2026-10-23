@@ -304,7 +304,6 @@ function advanceHeroFromControl(key, control) {
 
 function buildCard(item) {
   const metadata = item.metadata;
-  const variant = item.platformVariants?.[0] || {};
   const card = element("button", "content-card focusable");
   card.type = "button";
   card.setAttribute("aria-label", `${metadata.title || "F1 TV content"}${contentSubtitle(item) ? `, ${contentSubtitle(item)}` : ""}`);
@@ -318,8 +317,6 @@ function buildCard(item) {
   card.append(image);
 
   const text = element("span", "content-card-copy");
-  const series = metadata.uiSeries || variant.technicalPackages?.[0]?.packageName?.replaceAll("_", " ") || "";
-  if (series) text.append(element("span", "content-series", series));
   text.append(element("strong", "content-title", metadata.titleBrief || metadata.title || "Untitled"));
   const subtitle = contentSubtitle(item);
   if (subtitle && subtitle !== metadata.titleBrief) text.append(element("small", "content-subtitle", subtitle));
