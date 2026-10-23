@@ -12,7 +12,7 @@ The app is a standard webOS TV web app. Install LG's current webOS CLI, register
 
 ```sh
 ares-package .
-ares-install -d <device-name> com.ravboni.f1tv.webos_0.1.0_all.ipk
+ares-install -d <device-name> com.ravboni.f1tv.webos_0.1.1_all.ipk
 ```
 
 On a rooted TV, Homebrew Channel / Device Manager can also be used to install a built IPK. Keep the TV's developer or homebrew installation instructions specific to your firmware.

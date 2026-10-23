@@ -52,10 +52,31 @@ async function runDeviceCheck() {
   note.textContent = "Capability results are a first-pass check only. F1 TV login, entitlement, manifest compatibility, and license-server acceptance still need separate testing.";
 }
 
+function readLaunchParams() {
+  const raw = window.PalmSystem?.launchParams || window.launchParams;
+  if (!raw) return {};
+  if (typeof raw === "object") return raw;
+  try {
+    return JSON.parse(raw);
+  } catch (_error) {
+    return {};
+  }
+}
+
+function openF1FromLaunchParams() {
+  if (readLaunchParams().open === "f1") {
+    window.location.assign("https://f1tv.formula1.com/");
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   runDeviceCheck();
   document.getElementById("check-button").addEventListener("click", runDeviceCheck);
   document.getElementById("open-f1-button").addEventListener("click", () => {
     window.location.assign("https://f1tv.formula1.com/");
   });
+  openF1FromLaunchParams();
 });
+
+document.addEventListener("webOSLaunch", openF1FromLaunchParams);
+document.addEventListener("webOSRelaunch", openF1FromLaunchParams);
