@@ -7,6 +7,9 @@
     <meta name="theme-color" content="#090a0e">
     <title>F1 TV</title>
     <link rel="stylesheet" href="styles.css">
+    <script defer src="vendor/dash.all.min.js"></script>
+    <script defer src="vendor/qrcode.js"></script>
+    <script defer src="auth.js"></script>
     <script defer src="app.js"></script>
   </head>
   <body>
@@ -17,7 +20,7 @@
           <span class="brand-name">TV</span>
         </div>
         <nav id="primary-nav" class="primary-nav" aria-label="F1 TV sections"></nav>
-        <div class="profile-chip"><span class="profile-avatar">J</span><span>F1 TV</span></div>
+        <button id="account-button" class="profile-chip focusable" type="button"><span class="profile-avatar">J</span><span id="account-label">F1 TV</span></button>
       </header>
 
       <main id="main-content" class="main-content">
@@ -27,6 +30,20 @@
           <div id="content-rails" class="content-rails" aria-live="polite">
             <div class="loading-state"><span class="loading-spinner"></span><span>Loading your F1 TV home…</span></div>
           </div>
+        </section>
+
+        <section id="player-view" class="player-view" aria-label="F1 TV player" hidden>
+          <video id="player-video" class="player-video" playsinline></video>
+          <div class="player-chrome">
+            <button id="player-back" class="back-button focusable" type="button"><span aria-hidden="true">‹</span> Back</button>
+            <div class="player-status"><span class="player-live-dot"></span><span id="player-status-text">Connecting to F1 TV…</span></div>
+            <h1 id="player-title"></h1>
+            <div class="player-controls">
+              <button id="player-toggle" class="button button-glass focusable" type="button">Pause</button>
+              <button id="player-mute" class="button button-glass focusable" type="button">Mute</button>
+            </div>
+          </div>
+          <div id="player-error" class="player-error" hidden></div>
         </section>
 
         <section id="detail-view" class="detail-view" aria-label="Content details" hidden>
@@ -54,6 +71,17 @@
       </main>
 
       <div id="toast" class="toast" role="status" aria-live="polite"></div>
+      <section id="sign-in-dialog" class="sign-in-dialog" aria-label="Sign in to F1 TV" hidden>
+        <div class="sign-in-card">
+          <p class="detail-eyebrow">F1 TV ACCOUNT</p>
+          <h2>Link your account</h2>
+          <p id="sign-in-instructions">Use your phone to approve this TV with F1.</p>
+          <canvas id="pairing-qr" width="240" height="240" hidden></canvas>
+          <p id="pairing-code" class="pairing-code" hidden></p>
+          <p id="pairing-status" class="pairing-status">Starting secure sign-in…</p>
+          <button id="sign-in-cancel" class="button button-secondary focusable" type="button">Cancel</button>
+        </div>
+      </section>
     </div>
   </body>
 </html>

@@ -16,7 +16,13 @@ These notes describe requests observed in the signed-in F1 TV TV-web client on a
 - The official web player requests `GET /3.0/R/ENG/WEB_HLS/ALL/CONTENT/PLAY` with `channelId`, `contentId`, and `player` query parameters.
 - The observed request includes `ascendonToken`, `entitlementToken`, `x-f1-device-info`, and `sessionid` headers. Their values are user-specific and must remain on the TV.
 - The successful response includes stream type, DRM type, a license-server URL, entitlement data, TME feed data, and player settings. The exact values are not stored here.
-- The webOS WebView exposes MSE, EME key systems, and HEVC. F1 TV's own player has played a subscribed live feed on this C2. The next implementation step is to supply the required request context and feed selection to an app-owned player view, preserving the official entitlement and DRM license flow.
+- The C2's WebView exposes MSE and EME APIs. F1 TV's own player has played a subscribed live feed on this C2. The app now requests the `WEB_DASH` playback profile with the account's verified subscription and entitlement tokens, then configures dash.js to use the returned Widevine license endpoint in the app's own player view. This first implementation still needs a phone-linked session and stream playback verification on the C2.
+
+## Sign-in
+
+- The app uses F1's OAuth device authorization flow. The TV shows F1's official pairing code and URL; the user approves the TV on their phone.
+- The app reads the subscription session only from the returned signed OAuth response, verifies the nested subscription token against F1's published JWKS, and checks the account's entitlement and region endpoints.
+- The subscription token is encrypted in IndexedDB using AES-GCM and a non-exportable WebCrypto key. Pairing codes, OAuth access tokens, subscription tokens, entitlement tokens, stream URLs, and DRM material are not written to source files or diagnostics.
 
 ## Boundaries
 

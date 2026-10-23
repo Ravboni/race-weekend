@@ -4,7 +4,7 @@ An experimental client for rooted LG webOS televisions, starting with the LG C2.
 
 ## Status
 
-The app reads F1 TV's signed-in menu and catalogue feed into its own webOS home, section, and content-detail screens. It renders the service's current hero, categories, session information, and artwork, with remote navigation across rails and sections. The catalogue feed is requested directly from F1 TV and account cookies stay in the TV's webview. On an LG C2 running webOS 11.2.0, F1 TV's official player has been confirmed for live playback at 1920×1080 with MSE and EME media keys. The current development build hands playback to F1 TV's official player; a fully native in-app player and search are still in progress. The project uses the signed-in F1 TV account and TV's supported DRM pipeline; it does not decrypt, record, or redistribute protected streams.
+The app reads F1 TV's menu and catalogue feeds into its own webOS home, sections, and detail screens. Version 0.4.1 adds F1's phone pairing flow, an encrypted on-device session store, and an in-app DASH/Widevine playback path. The catalogue and detail experience has been verified on an LG C2 running webOS 11.2.0; this first in-app playback build still needs on-TV sign-in and stream verification. It uses the account's own F1 subscription and the TV's Widevine pipeline. It does not decrypt, record, or redistribute protected streams.
 
 ## Development
 
@@ -12,14 +12,18 @@ The app is a standard webOS TV web app. Install LG's current webOS CLI, register
 
 ```sh
 ares-package .
-ares-install -d <device-name> com.ravboni.f1tv.webos_0.3.2_all.ipk
+ares-install -d <device-name> com.ravboni.f1tv.webos_0.4.1_all.ipk
 ```
 
 On a rooted TV, Homebrew Channel / Device Manager can also be used to install a built IPK. Keep the TV's developer or homebrew installation instructions specific to your firmware.
 
 ## Reverse-engineering notes
 
-The Android TV application cannot run directly on webOS. The app uses F1 TV's current menu, page, and video catalogue endpoints to build its own navigation and screens. Playback work will use the official subscription entitlement and the webOS Media Source Extensions / Encrypted Media Extensions path. Authentication tokens and DRM license material must remain on the device and must not be committed to this repository.
+The Android TV application cannot run directly on webOS. This client uses F1 TV's menu, page, video, phone authorization, entitlement, and playback APIs. The signed-in subscription token is encrypted in IndexedDB with a non-exportable WebCrypto key. Playback licenses are requested by dash.js through the TV's Encrypted Media Extensions implementation. Authentication tokens, signed stream URLs, DRM challenges, and license responses must remain on the TV and must not be committed to this repository.
+
+## Third-party software
+
+The bundled dash.js 4.7.4 player is distributed under the BSD 3-Clause license. The QR code generator is MIT licensed. Their license texts are included in `vendor/`.
 
 ## References
 

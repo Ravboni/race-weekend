@@ -12,6 +12,10 @@ const state = {
   homeData: null,
   heroContainer: null,
   heroIndex: 0,
+  session: null,
+  dashPlayer: null,
+  pairingTimer: null,
+  playerTimer: null,
 };
 
 function element(tagName, className, text) {
@@ -102,9 +106,11 @@ function setActiveNav(activeButton) {
 function setView(name) {
   const home = document.getElementById("home-view");
   const detail = document.getElementById("detail-view");
+  const player = document.getElementById("player-view");
   const error = document.getElementById("error-view");
   home.hidden = name !== "home";
   detail.hidden = name !== "detail";
+  player.hidden = name !== "player";
   error.hidden = name !== "error";
   document.getElementById("main-content").scrollTop = 0;
 }
@@ -337,12 +343,142 @@ function playSelected() {
     showToast("This content is locked by the subscription entitlement.");
     return;
   }
-  const href = contentHref(item);
-  if (!href) {
-    showToast("A playback link was not provided for this item.");
+  if (!state.session?.signedIn) {
+    beginSignIn();
     return;
   }
-  window.location.assign(new URL(href, API_ORIGIN).toString());
+  startPlayback(item).catch((error) => showToast(error.message || "F1 TV could not start playback."));
+}
+
+function setAccountLabel() {
+  const label = document.getElementById("account-label");
+  label.textContent = state.session?.signedIn ? "F1 TV · Signed in" : "Sign in";
+}
+
+function closeSignIn() {
+  window.clearInterval(state.pairingTimer);
+  state.pairingTimer = null;
+  state.session?.cancelPairing();
+  document.getElementById("sign-in-dialog").hidden = true;
+}
+
+async function beginSignIn() {
+  const dialog = document.getElementById("sign-in-dialog");
+  const status = document.getElementById("pairing-status");
+  const code = document.getElementById("pairing-code");
+  const canvas = document.getElementById("pairing-qr");
+  dialog.hidden = false;
+  status.textContent = "Starting secure sign-in…";
+  code.hidden = true;
+  canvas.hidden = true;
+  document.getElementById("sign-in-cancel").focus();
+  try {
+    const pairing = await state.session.beginPairing();
+    if (dialog.hidden) return;
+    code.textContent = pairing.code;
+    code.hidden = false;
+    canvas.hidden = false;
+    if (typeof window.qrcode === "function") {
+      const qr = window.qrcode(0, "M");
+      qr.addData(pairing.url);
+      qr.make();
+      const context = canvas.getContext("2d");
+      const count = qr.getModuleCount();
+      const cell = canvas.width / count;
+      context.fillStyle = "#fff";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.fillStyle = "#000";
+      for (let row = 0; row < count; row += 1) {
+        for (let column = 0; column < count; column += 1) {
+          if (qr.isDark(row, column)) context.fillRect(Math.ceil(column * cell), Math.ceil(row * cell), Math.ceil(cell), Math.ceil(cell));
+        }
+      }
+    } else {
+      canvas.hidden = true;
+      document.getElementById("sign-in-instructions").textContent = "Visit f1.com/pair on your phone and enter the TV code below.";
+    }
+    status.textContent = "Scan the QR code with your phone and approve this TV on F1.";
+    state.pairingTimer = window.setInterval(async () => {
+      try {
+        const signedIn = await state.session.pollPairing();
+        if (!signedIn || dialog.hidden) return;
+        closeSignIn();
+        setAccountLabel();
+        showToast("F1 TV account linked to this TV.");
+        if (state.selectedItem) startPlayback(state.selectedItem).catch((error) => showToast(error.message));
+      } catch (error) {
+        closeSignIn();
+        showToast(error.message || "F1 TV sign-in failed.");
+      }
+    }, 1000);
+  } catch (error) {
+    status.textContent = error.message || "Could not start F1 TV sign-in.";
+  }
+}
+
+async function startPlayback(item) {
+  const video = document.getElementById("player-video");
+  const status = document.getElementById("player-status-text");
+  const title = item.metadata?.titleBrief || item.metadata?.title || "F1 TV";
+  const contentId = item.metadata?.contentId || item.id;
+  if (!contentId) throw new Error("F1 TV did not provide a content ID for this programme.");
+  stopPlayback();
+  document.getElementById("player-title").textContent = title;
+  document.getElementById("player-error").hidden = true;
+  status.textContent = "Requesting your F1 TV stream…";
+  setView("player");
+  try {
+    const stream = await state.session.play(contentId);
+    if (!window.dashjs?.MediaPlayer) throw new Error("The TV player engine did not load.");
+    const player = window.dashjs.MediaPlayer().create();
+    state.dashPlayer = player;
+    player.updateSettings({ debug: { logLevel: 0 }, streaming: { abr: { limitBitrateByPortal: false } } });
+    player.setProtectionData({
+      "com.widevine.alpha": {
+        serverURL: stream.licenseUrl,
+        httpRequestHeaders: stream.headers,
+        withCredentials: true,
+        audioRobustness: "HW_SECURE_CRYPTO",
+        videoRobustness: "HW_SECURE_DECODE",
+      },
+    });
+    player.on(window.dashjs.MediaPlayer.events.STREAM_INITIALIZED, () => {
+      status.textContent = "Playing on F1 TV";
+      video.play().catch(() => {});
+    });
+    player.on(window.dashjs.MediaPlayer.events.PLAYBACK_ERROR, () => {
+      showPlayerError("F1 TV could not play this stream on the TV. Check the connection, subscription, and Widevine playback support.");
+    });
+    video.onplaying = () => { status.textContent = "Playing on F1 TV"; };
+    video.onwaiting = () => { status.textContent = "Buffering…"; };
+    player.initialize(video, stream.manifest, true);
+    document.getElementById("player-back").focus();
+    state.playerTimer = window.setTimeout(() => document.querySelector(".player-chrome")?.classList.add("is-hidden"), 5000);
+  } catch (error) {
+    showPlayerError(error.message || "Could not start F1 TV playback.");
+  }
+}
+
+function showPlayerError(message) {
+  const panel = document.getElementById("player-error");
+  panel.textContent = message;
+  panel.hidden = false;
+  document.getElementById("player-status-text").textContent = "Playback unavailable";
+}
+
+function stopPlayback() {
+  window.clearTimeout(state.playerTimer);
+  state.playerTimer = null;
+  if (state.dashPlayer) {
+    try { state.dashPlayer.reset(); } catch (_error) {}
+    state.dashPlayer = null;
+  }
+  const video = document.getElementById("player-video");
+  if (video) {
+    video.pause();
+    video.removeAttribute("src");
+    video.load();
+  }
 }
 
 function focusables() {
@@ -380,6 +516,27 @@ function moveFocus(event) {
 }
 
 function onRemoteKey(event) {
+  if (document.getElementById("sign-in-dialog") && !document.getElementById("sign-in-dialog").hidden) {
+    if (event.key === "Escape" || event.key === "Backspace" || event.keyCode === 461) {
+      event.preventDefault();
+      closeSignIn();
+    }
+    return;
+  }
+  if (!document.getElementById("player-view").hidden) {
+    const chrome = document.querySelector(".player-chrome");
+    if (event.key === "Escape" || event.key === "Backspace" || event.keyCode === 461) {
+      event.preventDefault();
+      stopPlayback();
+      setView("detail");
+      return;
+    }
+    if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) moveFocus(event);
+    if (chrome) chrome.classList.remove("is-hidden");
+    window.clearTimeout(state.playerTimer);
+    state.playerTimer = window.setTimeout(() => chrome?.classList.add("is-hidden"), 5000);
+    return;
+  }
   if (event.key === "Escape" || event.key === "Backspace" || event.keyCode === 461) {
     if (!document.getElementById("detail-view").hidden) {
       event.preventDefault();
@@ -402,7 +559,26 @@ function onRemoteKey(event) {
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("back-button").addEventListener("click", () => setView("home"));
   document.getElementById("play-button").addEventListener("click", playSelected);
+  document.getElementById("player-back").addEventListener("click", () => { stopPlayback(); setView("detail"); });
+  document.getElementById("player-toggle").addEventListener("click", () => {
+    const video = document.getElementById("player-video");
+    if (video.paused) video.play(); else video.pause();
+    document.getElementById("player-toggle").textContent = video.paused ? "Play" : "Pause";
+  });
+  document.getElementById("player-mute").addEventListener("click", () => {
+    const video = document.getElementById("player-video");
+    video.muted = !video.muted;
+    document.getElementById("player-mute").textContent = video.muted ? "Unmute" : "Mute";
+  });
+  document.getElementById("sign-in-cancel").addEventListener("click", closeSignIn);
+  document.getElementById("account-button").addEventListener("click", () => {
+    if (state.session?.signedIn) {
+      state.session.signOut().then(() => { setAccountLabel(); showToast("Signed out of F1 TV on this TV."); }).catch((error) => showToast(error.message));
+    } else if (!state.session?.signedIn) beginSignIn();
+  });
   document.getElementById("retry-button").addEventListener("click", loadHome);
   document.addEventListener("keydown", onRemoteKey);
+  state.session = new window.F1Session();
+  state.session.restore().then(setAccountLabel).catch(() => setAccountLabel());
   loadHome();
 });

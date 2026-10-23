@@ -21,7 +21,7 @@ button { color: inherit; font: inherit; }
 .nav-button { position: relative; height: 100%; padding: 0 1px; border: 0; background: transparent; color: #a4a5ad; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap; }
 .nav-button:hover, .nav-button.active { color: #fff; }
 .nav-button.active::after { position: absolute; right: 0; bottom: 0; left: 0; height: 3px; background: #e10628; content: ""; }
-.profile-chip { display: flex; flex: 0 0 auto; align-items: center; gap: 10px; color: #c4c5cc; font-size: 12px; }
+.profile-chip { display: flex; flex: 0 0 auto; align-items: center; gap: 10px; padding: 5px; border: 0; border-radius: 20px; background: transparent; color: #c4c5cc; cursor: pointer; font-size: 12px; }
 .profile-avatar { display: inline-flex; width: 34px; height: 34px; align-items: center; justify-content: center; border: 1px solid #45464d; border-radius: 50%; background: linear-gradient(135deg,#383941,#17181d); color: #fff; font-size: 13px; font-weight: 700; }
 
 .main-content { position: relative; flex: 1; min-height: 0; overflow: auto; scrollbar-color: #42434a transparent; scrollbar-width: thin; }
@@ -86,6 +86,25 @@ button { color: inherit; font: inherit; }
 .error-view .button { margin-top: 15px; }
 .toast { position: fixed; z-index: 10; right: 40px; bottom: 35px; max-width: 500px; padding: 13px 18px; border: 1px solid #44454d; border-radius: 4px; background: #1d1e23; color: #eeeef2; font-size: 12px; opacity: 0; pointer-events: none; transform: translateY(12px); transition: opacity .2s ease, transform .2s ease; }
 .toast.visible { opacity: 1; transform: translateY(0); }
+
+.player-view { position: absolute; z-index: 6; inset: 0; overflow: hidden; background: #000; }
+.player-video { position: absolute; inset: 0; width: 100%; height: 100%; background: #000; object-fit: contain; }
+.player-chrome { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: space-between; padding: 35px 5.2vw 55px; background: linear-gradient(180deg,rgba(0,0,0,.72),transparent 30%,transparent 60%,rgba(0,0,0,.72)); opacity: 1; transition: opacity .25s ease; }
+.player-chrome.is-hidden { opacity: 0; pointer-events: none; }
+.player-chrome .back-button { align-self: flex-start; margin: 0; }
+.player-status { display: flex; align-items: center; gap: 10px; color: #ddd; font-size: 14px; }
+.player-live-dot { width: 8px; height: 8px; border-radius: 50%; background: #ed143b; box-shadow: 0 0 12px #ed143b; }
+.player-chrome h1 { margin: 4px 0 20px; color: #fff; font-size: 31px; }
+.player-controls { display: flex; gap: 12px; }
+.player-error { position: absolute; inset: 20% 15%; display: flex; align-items: center; justify-content: center; padding: 40px; border: 1px solid #37383e; background: rgba(8,9,12,.94); color: #fff; font-size: 20px; line-height: 1.5; text-align: center; }
+.sign-in-dialog { position: fixed; z-index: 20; inset: 0; display: flex; align-items: center; justify-content: center; padding: 30px; background: rgba(0,0,0,.75); }
+.sign-in-card { width: min(540px, 80vw); padding: 36px; border: 1px solid #44454d; border-radius: 8px; background: #17181d; text-align: center; box-shadow: 0 22px 80px rgba(0,0,0,.6); }
+.sign-in-card h2 { margin: 0; font-size: 30px; }
+.sign-in-card > p:not(.detail-eyebrow):not(.pairing-code) { color: #c1c2c9; font-size: 15px; line-height: 1.5; }
+.sign-in-card canvas { display: block; width: 210px; height: 210px; margin: 22px auto 10px; background: white; }
+.pairing-code { margin: 8px 0; color: #fff; font-size: 30px; font-weight: 800; letter-spacing: .2em; }
+.pairing-status { min-height: 22px; }
+.sign-in-card .button { margin-top: 14px; }
 
 .focusable:focus-visible { z-index: 3; outline: 3px solid #fff; outline-offset: 4px; box-shadow: 0 0 0 8px rgba(255,255,255,.17), 0 12px 28px rgba(0,0,0,.4); }
 .nav-button:focus-visible { outline-offset: -7px; }
