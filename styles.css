@@ -622,13 +622,14 @@ button:focus, input:focus, select:focus, textarea:focus { outline: none; }
 }
 .content-card { scroll-margin-inline: 24px; }
 
-/* Android TV Standard Card measurements (CSS px map to dp in webOS's 1920x1080 viewport).
-   The C2 uses the guide's 4-card width; the other viewport ranges use its alternate layouts. */
+/* Android TV 4-card layout. The guide's 196dp example assumes an 844dp rail.
+   This rail is wider, so size each card from the available rail width and keep
+   four cards visible with a 20px peek of the next one. */
 .content-rail { gap: 20px; }
 .content-card {
   position: relative;
-  width: 268px;
-  min-width: 268px;
+  width: clamp(124px, calc((89vw - 90px) / 4), 844px);
+  min-width: clamp(124px, calc((89vw - 90px) / 4), 844px);
   border-radius: 12px;
   background: transparent;
   box-shadow: none;
@@ -662,16 +663,16 @@ button:focus, input:focus, select:focus, textarea:focus { outline: none; }
 .content-title {
   width: 100%;
   color: var(--ink);
-  font-size: 16px;
+  font-size: 20px;
   font-weight: 700;
-  line-height: 20px;
+  line-height: 24px;
 }
 .content-subtitle {
   width: 100%;
   margin: 0;
   color: var(--ink-muted);
-  font-size: 14px;
-  line-height: 17px;
+  font-size: 16px;
+  line-height: 16px;
 }
 .content-card:focus {
   z-index: 4;
@@ -693,21 +694,3 @@ button:focus, input:focus, select:focus, textarea:focus { outline: none; }
   box-shadow: 0 0 0 3px #85858d, 0 8px 18px rgba(0,0,0,.38);
 }
 .content-card:active .content-card-image::after { border: 3px solid #85858d; }
-
-@media (min-width: 2600px) {
-  .content-card { width: 844px; min-width: 844px; }
-}
-@media (min-width: 2300px) and (max-width: 2599px) {
-  .content-card { width: 412px; min-width: 412px; }
-}
-@media (min-width: 2000px) and (max-width: 2299px) {
-  .content-card { width: 268px; min-width: 268px; }
-}
-@media (min-width: 1200px) and (max-width: 1999px) {
-  .content-card { width: 196px; min-width: 196px; }
-}
-@media (max-width: 1199px) {
-  .content-card { width: 124px; min-width: 124px; }
-  .content-title { font-size: 14px; }
-  .content-subtitle { font-size: 12px; }
-}
