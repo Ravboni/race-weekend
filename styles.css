@@ -448,8 +448,9 @@ body { color: var(--ink); }
   background-color: #15161b;
   background-position: center 34%;
   background-size: cover;
-  animation: hero-backdrop-in .24s ease-out both;
+  animation: hero-backdrop-in .1s ease-out both;
 }
+.hero-backdrop.is-exiting { animation: hero-backdrop-out .1s ease-in both; }
 .hero-backdrop::after {
   position: absolute;
   inset: 0;
@@ -461,7 +462,7 @@ body { color: var(--ink); }
 .hero-copy {
   width: min(860px, 59vw);
   padding: 32px 0 56px 8vw;
-  animation: hero-copy-in .2s ease-out both;
+  animation: hero-copy-in .1s ease-out both;
 }
 .hero-indicators {
   position: absolute;
@@ -480,7 +481,7 @@ body { color: var(--ink); }
   padding: 0;
   border: 0;
   border-radius: 50%;
-  background: rgba(255,255,255,.54);
+  background: rgba(255,255,255,.3);
   transition: transform .16s ease, background-color .16s ease, box-shadow .16s ease;
 }
 .hero-indicator.active { width: 8px; background: #fff; }
@@ -491,7 +492,8 @@ body { color: var(--ink); }
   box-shadow: none;
 }
 @keyframes hero-backdrop-in { from { opacity: .55; } to { opacity: 1; } }
-@keyframes hero-copy-in { from { opacity: .65; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes hero-backdrop-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes hero-copy-in { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
   .hero-backdrop, .hero-copy { animation: none; }
   .hero-indicator { transition: none; }

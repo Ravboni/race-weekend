@@ -170,8 +170,15 @@ function focusDefault(name) {
 
 function buildHero(container, selectedIndex = 0, focusSlide = false) {
   const host = document.getElementById("hero");
+  const previousBackdrop = host.querySelector(".hero-backdrop.is-current");
   window.clearTimeout(state.heroTimer);
   host.replaceChildren();
+  if (previousBackdrop) {
+    previousBackdrop.classList.remove("is-current");
+    previousBackdrop.classList.add("is-exiting");
+    host.append(previousBackdrop);
+    window.setTimeout(() => previousBackdrop.remove(), 110);
+  }
   const pageLabel = document.getElementById("page-label");
   const isHomePage = state.pageTitle === "Home";
   pageLabel.hidden = isHomePage;
@@ -218,7 +225,7 @@ function buildHero(container, selectedIndex = 0, focusSlide = false) {
     document.addEventListener("visibilitychange", scheduleHeroAutoAdvance);
   }
   const image = contentImage(item, 1920, 1080);
-  const backdrop = element("div", "hero-backdrop");
+  const backdrop = element("div", "hero-backdrop is-current");
   if (image) backdrop.style.backgroundImage = `url("${image}")`;
   backdrop.setAttribute("aria-hidden", "true");
   host.append(backdrop);
