@@ -123,7 +123,7 @@ button { color: inherit; font: inherit; }
 .player-driver-dot { display: inline-block; flex: 0 0 24px; width: 24px; height: 24px; border-radius: 50%; }
 .player-option.is-selected .player-driver-dot { box-shadow: 0 0 0 2px rgba(0,0,0,.12); }
 .player-source-divider { height: 1px; margin: 8px auto 10px; width: 28%; background: #818187; }
-.player-options #player-audio-options .player-option { min-height: 50px; font-size: 14px; text-transform: none; }
+.player-options #player-audio-options .player-option, .player-options #player-subtitle-options .player-option { min-height: 50px; font-size: 14px; text-transform: none; }
 .player-option:disabled { opacity: .5; }
 .player-options-note { margin: 4px 0; color: #b7b8c0; font-size: 13px; line-height: 1.5; }
 .player-timeline { display: flex; align-items: center; gap: 18px; margin-top: 15px; color: #fff; font-size: 12px; font-variant-numeric: tabular-nums; }
@@ -239,7 +239,7 @@ button { color: inherit; font: inherit; }
   .player-source-icon, .player-driver-dot { flex-basis: 30px; width: 30px; height: 30px; }
   .player-source-icon { font-size: 30px; }
   .player-source-divider { margin: 10px auto 13px; }
-  .player-options #player-audio-options .player-option { min-height: 68px; font-size: 18px; }
+.player-options #player-audio-options .player-option, .player-options #player-subtitle-options .player-option { min-height: 68px; font-size: 18px; }
   .player-options-note { font-size: 18px; }
   .player-timeline { gap: 22px; margin-top: 19px; font-size: 17px; }
   .player-timeline input { height: 12px; }
@@ -409,7 +409,7 @@ body { color: var(--ink); }
 .player-options h2 { font-size: 28px; }
 .player-options h3 { color: #c5c7cf; font-size: 14px; }
 .player-option { min-height: 68px; border-radius: 12px; background: #24262e; font-size: 18px; }
-.player-options #player-audio-options .player-option { min-height: 60px; font-size: 16px; }
+.player-options #player-audio-options .player-option, .player-options #player-subtitle-options .player-option { min-height: 60px; font-size: 16px; }
 .player-source-divider { background: rgba(255,255,255,.42); }
 
 /* Reusable TV focus: scale the target and keep a crisp red/white boundary. */
@@ -459,7 +459,7 @@ body { color: var(--ink); }
   .player-options { width: min(610px, 40vw); }
   .player-options h2 { font-size: 28px; }
   .player-option { min-height: 68px; font-size: 18px; }
-  .player-options #player-audio-options .player-option { min-height: 60px; font-size: 16px; }
+  .player-options #player-audio-options .player-option, .player-options #player-subtitle-options .player-option { min-height: 60px; font-size: 16px; }
 }
 
 @media (max-width: 1250px) {

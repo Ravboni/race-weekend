@@ -6,7 +6,7 @@
     <meta name="color-scheme" content="dark">
     <meta name="theme-color" content="#090a0e">
     <title>F1 TV</title>
-    <link rel="stylesheet" href="styles.css?v=0.11.0">
+    <link rel="stylesheet" href="styles.css?v=0.12.0">
     <script defer src="vendor/dash.all.min.js"></script>
     <script defer src="vendor/qrcode.js"></script>
     <script defer src="auth.js"></script>
@@ -53,19 +53,24 @@
               <button id="player-toggle" class="button button-glass focusable" type="button">Pause</button>
               <button id="player-mute" class="button button-glass focusable" type="button">Mute</button>
               <button id="player-live" class="button button-glass focusable" type="button" hidden>Go to Live</button>
-              <button id="player-options-toggle" class="button button-glass focusable" type="button">Sources &amp; audio</button>
+              <button id="player-sources-toggle" class="button button-glass focusable" type="button">Sources</button>
+              <button id="player-language-toggle" class="button button-glass focusable" type="button">Audio &amp; subtitles</button>
             </div>
             <div class="player-timeline">
               <input id="player-scrubber" class="focusable" type="range" min="0" max="1000" value="1000" aria-label="Seek through programme">
               <span id="player-time">LIVE</span>
             </div>
           </div>
-          <aside id="player-options" class="player-options" aria-label="Playback options" hidden>
-            <div class="player-options-heading"><h2>Sources &amp; audio</h2><button id="player-options-close" class="button button-glass focusable" type="button">Done</button></div>
-            <h3>Video source</h3>
+          <aside id="player-sources-panel" class="player-options" aria-label="Video sources" hidden>
+            <div class="player-options-heading"><h2>Choose a feed</h2><button id="player-sources-close" class="button button-glass focusable" type="button">Done</button></div>
             <div id="player-source-options" class="player-option-list"></div>
-            <h3>Audio</h3>
+          </aside>
+          <aside id="player-language-panel" class="player-options" aria-label="Audio and subtitles" hidden>
+            <div class="player-options-heading"><h2>Audio &amp; subtitles</h2><button id="player-language-close" class="button button-glass focusable" type="button">Done</button></div>
+            <h3>Audio language</h3>
             <div id="player-audio-options" class="player-option-list"><p class="player-options-note">Audio tracks appear when playback starts.</p></div>
+            <h3>Subtitles</h3>
+            <div id="player-subtitle-options" class="player-option-list"><p class="player-options-note">Subtitle tracks appear when playback starts.</p></div>
           </aside>
           <div id="player-error" class="player-error" hidden></div>
         </section>

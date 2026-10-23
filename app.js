@@ -21,6 +21,10 @@ const state = {
   searchQuery: "",
   selectedChannelId: "",
   audioTracks: [],
+  textTracks: [],
+  currentView: "home",
+  playerPanel: null,
+  playerOverlay: false,
   signInReturnFocus: null,
   pendingSeekValue: null,
 };
@@ -114,7 +118,18 @@ function setActiveNav(activeButton) {
   document.querySelectorAll(".nav-button").forEach((button) => button.classList.toggle("active", button === activeButton));
 }
 
-function setView(name) {
+function setView(name, { pushHistory = true } = {}) {
+  const changed = state.currentView !== name;
+  if (pushHistory && changed) {
+    window.history.pushState({ f1tv: true, screen: name, panel: null }, "", window.location.href);
+  }
+  state.currentView = name;
+  if (changed) {
+    state.playerPanel = null;
+    state.playerOverlay = false;
+    document.getElementById("player-sources-panel").hidden = true;
+    document.getElementById("player-language-panel").hidden = true;
+  }
   const home = document.getElementById("home-view");
   const detail = document.getElementById("detail-view");
   const search = document.getElementById("search-view");
@@ -456,7 +471,7 @@ function renderPlayerSources() {
     const label = String(stream.title || stream.reportingName || stream.type || "Feed").slice(0, 70);
     const primary = index < 4;
     const button = playerOption(label, id === state.selectedChannelId, () => {
-      if (id === state.selectedChannelId) { closePlayerOptions(); return; }
+      if (id === state.selectedChannelId) { closePlayerPanel(); return; }
       state.selectedChannelId = id;
       renderPlayerSources();
       document.querySelector("#player-source-options .player-option.is-selected")?.focus();
@@ -512,22 +527,130 @@ function renderPlayerAudio() {
   });
 }
 
-function openPlayerOptions() {
-  const panel = document.getElementById("player-options");
-  if (!panel) return;
-  renderPlayerSources();
-  renderPlayerAudio();
-  panel.hidden = false;
-  document.querySelector(".player-chrome")?.classList.remove("is-hidden");
-  window.clearTimeout(state.playerTimer);
-  document.getElementById("player-options-close").focus();
+function subtitleTrackLabel(track, index) {
+  const label = Array.isArray(track.labels) ? track.labels.map((entry) => entry?.text || entry).filter(Boolean)[0] : "";
+  const language = track.lang || track.language || "";
+  const role = Array.isArray(track.roles) ? track.roles.map((entry) => entry?.value || entry).filter(Boolean)[0] : "";
+  const detail = [label, language, role].filter(Boolean).map((part) => String(part).trim()).filter((part, i, all) => all.indexOf(part) === i);
+  return detail.length ? detail.join(" · ") : `Subtitle ${index + 1}`;
 }
 
-function closePlayerOptions() {
-  const panel = document.getElementById("player-options");
-  if (!panel || panel.hidden) return;
-  panel.hidden = true;
-  document.getElementById("player-options-toggle").focus();
+function renderPlayerSubtitles() {
+  const host = document.getElementById("player-subtitle-options");
+  if (!host) return;
+  host.replaceChildren();
+  const player = state.dashPlayer;
+  if (!state.textTracks.length) {
+    host.append(element("p", "player-options-note", player ? "No subtitles are available for this feed." : "Subtitle tracks appear when playback starts."));
+    return;
+  }
+  let currentIndex = -1;
+  let enabled = false;
+  try {
+    currentIndex = player?.getCurrentTextTrackIndex?.() ?? -1;
+    enabled = player?.isTextEnabled?.() ?? false;
+  } catch (_error) {}
+  host.append(playerOption("Off", !enabled, () => {
+    try { player.setTextTrack(-1); renderPlayerSubtitles(); host.querySelector(".player-option.is-selected")?.focus(); }
+    catch (_error) { showToast("Could not turn subtitles off."); }
+  }));
+  state.textTracks.forEach((track, index) => {
+    const trackIndex = index;
+    const selected = enabled && currentIndex === trackIndex;
+    host.append(playerOption(subtitleTrackLabel(track, index), selected, () => {
+      try {
+        player.enableText(true);
+        player.setTextTrack(trackIndex);
+        window.setTimeout(() => { renderPlayerSubtitles(); host.querySelector(".player-option.is-selected")?.focus(); }, 150);
+      } catch (_error) { showToast("Could not switch the subtitle track."); }
+    }));
+  });
+}
+
+function playerPanelElement(kind) {
+  return document.getElementById(kind === "sources" ? "player-sources-panel" : "player-language-panel");
+}
+
+function showPlayerChrome({ pushHistory = true } = {}) {
+  if (state.currentView === "player" && !state.playerOverlay && pushHistory) {
+    window.history.pushState({ f1tv: true, screen: "player", panel: null, overlay: true }, "", window.location.href);
+  }
+  state.playerOverlay = true;
+  document.querySelector(".player-chrome")?.classList.remove("is-hidden");
+  window.clearTimeout(state.playerTimer);
+}
+
+function hidePlayerChrome({ updateHistory = true } = {}) {
+  document.querySelector(".player-chrome")?.classList.add("is-hidden");
+  state.playerOverlay = false;
+  if (updateHistory && window.history.state?.f1tv && window.history.state.screen === "player") {
+    window.history.replaceState({ ...window.history.state, panel: null, overlay: false }, "", window.location.href);
+  }
+}
+
+function showPlayerPanel(kind, { pushHistory = true, focus = true } = {}) {
+  const panel = playerPanelElement(kind);
+  if (!panel) return;
+  if (kind === "sources") renderPlayerSources();
+  else { renderPlayerAudio(); renderPlayerSubtitles(); }
+  showPlayerChrome();
+  if (pushHistory && state.playerPanel !== kind) {
+    const historyState = { f1tv: true, screen: "player", panel: kind };
+    if (state.playerPanel) window.history.replaceState(historyState, "", window.location.href);
+    else window.history.pushState(historyState, "", window.location.href);
+  }
+  document.getElementById("player-sources-panel").hidden = kind !== "sources";
+  document.getElementById("player-language-panel").hidden = kind !== "language";
+  state.playerPanel = kind;
+  if (focus) document.getElementById(kind === "sources" ? "player-sources-close" : "player-language-close").focus();
+}
+
+function closePlayerPanel({ fromHistory = false } = {}) {
+  if (!state.playerPanel) return;
+  if (!fromHistory && window.history.state?.f1tv && window.history.state.panel) {
+    window.history.back();
+    return;
+  }
+  const previousPanel = state.playerPanel;
+  document.getElementById("player-sources-panel").hidden = true;
+  document.getElementById("player-language-panel").hidden = true;
+  state.playerPanel = null;
+  const toggleId = previousPanel === "language" ? "player-language-toggle" : "player-sources-toggle";
+  document.getElementById(toggleId)?.focus();
+  state.playerTimer = window.setTimeout(() => hidePlayerChrome(), 5000);
+}
+
+function openPlayerOptions() {
+  showPlayerPanel("sources");
+}
+
+function handleAppPopState(event) {
+  const destination = event.state;
+  if (!destination?.f1tv) return;
+  const previousView = state.currentView;
+  const previousPanel = state.playerPanel;
+  if (!destination.modal && !document.getElementById("sign-in-dialog").hidden) closeSignIn({ fromHistory: true });
+  if (previousView === "player" && destination.screen !== "player") stopPlayback();
+  setView(destination.screen || "home", { pushHistory: false });
+  if (destination.screen === "player" && destination.panel) {
+    showPlayerPanel(destination.panel, { pushHistory: false });
+  } else if (previousPanel) {
+    closePlayerPanel({ fromHistory: true });
+  }
+  if (destination.screen === "player" && !destination.panel) {
+    if (destination.overlay) showPlayerChrome({ pushHistory: false });
+    else hidePlayerChrome({ updateHistory: false });
+  }
+}
+
+function requestAppBack() {
+  if (window.history.state?.f1tv) window.history.back();
+  else if (state.currentView !== "home") setView("home", { pushHistory: false });
+}
+
+function exitPlayer() {
+  const steps = state.playerPanel ? 3 : state.playerOverlay ? 2 : 1;
+  window.history.go(-steps);
 }
 
 function findContentItem(data, id) {
@@ -591,7 +714,14 @@ function setAccountLabel() {
   label.textContent = state.session?.signedIn ? "F1 TV · Signed in" : "Sign in";
 }
 
-function closeSignIn() {
+function closeSignIn({ fromHistory = false, navigate = true } = {}) {
+  if (!fromHistory && window.history.state?.f1tv && window.history.state.modal === "signin") {
+    if (navigate) window.history.back();
+    else {
+      const { modal, ...pageState } = window.history.state;
+      window.history.replaceState(pageState, "", window.location.href);
+    }
+  }
   window.clearInterval(state.pairingTimer);
   state.pairingTimer = null;
   state.session?.cancelPairing();
@@ -608,6 +738,9 @@ async function beginSignIn() {
   const code = document.getElementById("pairing-code");
   const canvas = document.getElementById("pairing-qr");
   state.signInReturnFocus = document.activeElement;
+  if (window.history.state?.f1tv && window.history.state.modal !== "signin") {
+    window.history.pushState({ ...window.history.state, modal: "signin" }, "", window.location.href);
+  }
   dialog.hidden = false;
   status.textContent = "Starting secure sign-in…";
   code.hidden = true;
@@ -643,7 +776,7 @@ async function beginSignIn() {
       try {
         const signedIn = await state.session.pollPairing();
         if (!signedIn || dialog.hidden) return;
-        closeSignIn();
+        closeSignIn({ navigate: false });
         setAccountLabel();
         showToast("F1 TV account linked to this TV.");
         if (state.selectedItem) startPlayback(state.selectedItem).catch((error) => showToast(error.message));
@@ -671,6 +804,7 @@ async function startPlayback(item) {
   document.getElementById("player-time").textContent = state.playerLive ? "LIVE" : "--:-- / --:--";
   status.textContent = "Requesting your F1 TV stream…";
   setView("player");
+  showPlayerChrome();
   try {
     const stream = await state.session.play(contentId, state.selectedChannelId);
     if (!window.dashjs?.MediaPlayer) throw new Error("The TV player engine did not load.");
@@ -691,9 +825,16 @@ async function startPlayback(item) {
     player.on(window.dashjs.MediaPlayer.events.STREAM_INITIALIZED, () => {
       status.textContent = "Playing on F1 TV";
       try { state.audioTracks = player.getTracksFor("audio") || []; } catch (_error) { state.audioTracks = []; }
+      try { state.textTracks = player.getTracksFor("text") || []; } catch (_error) { state.textTracks = []; }
       renderPlayerAudio();
+      renderPlayerSubtitles();
       video.play().catch(() => {});
       updateTimeline();
+    });
+    const textTrackAdded = window.dashjs.MediaPlayer.events.TEXT_TRACK_ADDED;
+    if (textTrackAdded) player.on(textTrackAdded, () => {
+      try { state.textTracks = player.getTracksFor("text") || []; } catch (_error) { state.textTracks = []; }
+      renderPlayerSubtitles();
     });
     player.on(window.dashjs.MediaPlayer.events.PLAYBACK_ERROR, () => {
       showPlayerError("F1 TV could not play this stream on the TV. Check the connection, subscription, and Widevine playback support.");
@@ -705,10 +846,10 @@ async function startPlayback(item) {
     video.ontimeupdate = updateTimeline;
     video.onprogress = updateTimeline;
     player.initialize(video, stream.manifest, true);
-    if (document.getElementById("player-options").hidden) document.getElementById("player-back").focus();
+    if (!state.playerPanel) video.focus();
     window.clearInterval(state.timelineTimer);
     state.timelineTimer = window.setInterval(updateTimeline, 1000);
-    state.playerTimer = window.setTimeout(() => document.querySelector(".player-chrome")?.classList.add("is-hidden"), 5000);
+    state.playerTimer = window.setTimeout(() => hidePlayerChrome(), 5000);
   } catch (error) {
     showPlayerError(error.message || "Could not start F1 TV playback.");
   }
@@ -846,8 +987,8 @@ function focusScope() {
   if (!signInDialog.hidden) return signInDialog;
   const playerView = document.getElementById("player-view");
   if (!playerView.hidden) {
-    const options = document.getElementById("player-options");
-    return options.hidden ? document.querySelector(".player-chrome") : options;
+    const options = state.playerPanel ? playerPanelElement(state.playerPanel) : null;
+    return options || document.querySelector(".player-chrome");
   }
   const activeView = ["home", "search", "detail", "error"]
     .map((id) => document.getElementById(`${id}-view`))
@@ -918,17 +1059,14 @@ function onRemoteKey(event) {
     return;
   }
   if (!document.getElementById("player-view").hidden) {
-    const chrome = document.querySelector(".player-chrome");
     if (key === "Escape" || key === "Back" || (key === "Backspace" && !editingText) || event.keyCode === 461) {
       event.preventDefault();
-      if (!document.getElementById("player-options").hidden) { closePlayerOptions(); return; }
-      stopPlayback();
-      setView("detail");
+      requestAppBack();
       return;
     }
     if (["ContextMenu", "Menu"].includes(key) || event.keyCode === 93) {
       event.preventDefault();
-      openPlayerOptions();
+      showPlayerPanel("sources");
       return;
     }
     const scrubber = document.getElementById("player-scrubber");
@@ -948,35 +1086,19 @@ function onRemoteKey(event) {
     }
     if (key === "ArrowRight" && document.activeElement === document.getElementById("player-video")) {
       event.preventDefault();
-      openPlayerOptions();
+      showPlayerPanel("sources");
       return;
     }
-    if (chrome) chrome.classList.remove("is-hidden");
+    showPlayerChrome();
     if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(key)) moveFocus(event, key);
     window.clearTimeout(state.playerTimer);
-    state.playerTimer = window.setTimeout(() => chrome?.classList.add("is-hidden"), 5000);
+    state.playerTimer = window.setTimeout(() => hidePlayerChrome(), 5000);
     return;
   }
   if (key === "Escape" || key === "Back" || (key === "Backspace" && !editingText) || event.keyCode === 461) {
-    if (!document.getElementById("search-view").hidden) {
+    if (state.currentView !== "home" || (state.pageTitle !== "Home" && state.homeData)) {
       event.preventDefault();
-      setView("home");
-      const homeButton = [...document.querySelectorAll(".nav-button")].find((button) => button.dataset.uri === API.home);
-      if (homeButton) setActiveNav(homeButton);
-      return;
-    }
-    if (!document.getElementById("detail-view").hidden) {
-      event.preventDefault();
-      setView("home");
-      document.getElementById("play-button").blur();
-      return;
-    }
-    if (state.pageTitle !== "Home" && state.homeData) {
-      event.preventDefault();
-      renderPage(state.homeData, "Home");
-      state.pageTitle = "Home";
-      const homeButton = [...document.querySelectorAll(".nav-button")].find((button) => button.dataset.uri === API.home);
-      if (homeButton) setActiveNav(homeButton);
+      requestAppBack();
     }
     return;
   }
@@ -984,13 +1106,17 @@ function onRemoteKey(event) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("back-button").addEventListener("click", () => setView("home"));
-  document.getElementById("search-back").addEventListener("click", () => setView("home"));
+  window.history.replaceState({ f1tv: true, screen: "home", panel: null }, "", window.location.href);
+  window.addEventListener("popstate", handleAppPopState);
+  document.getElementById("back-button").addEventListener("click", requestAppBack);
+  document.getElementById("search-back").addEventListener("click", requestAppBack);
   document.getElementById("search-form").addEventListener("submit", submitSearch);
   document.getElementById("play-button").addEventListener("click", playSelected);
-  document.getElementById("player-back").addEventListener("click", () => { stopPlayback(); setView("detail"); });
-  document.getElementById("player-options-toggle").addEventListener("click", openPlayerOptions);
-  document.getElementById("player-options-close").addEventListener("click", closePlayerOptions);
+  document.getElementById("player-back").addEventListener("click", exitPlayer);
+  document.getElementById("player-sources-toggle").addEventListener("click", () => showPlayerPanel("sources"));
+  document.getElementById("player-language-toggle").addEventListener("click", () => showPlayerPanel("language"));
+  document.getElementById("player-sources-close").addEventListener("click", () => closePlayerPanel());
+  document.getElementById("player-language-close").addEventListener("click", () => closePlayerPanel());
   document.getElementById("player-video").tabIndex = 0;
   document.getElementById("player-video").addEventListener("contextmenu", (event) => {
     event.preventDefault();

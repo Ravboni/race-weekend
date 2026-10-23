@@ -4,7 +4,7 @@ An experimental client for rooted LG webOS televisions, starting with the LG C2.
 
 ## Status
 
-The app reads F1 TV's menu and catalogue feeds into its own webOS home, sections, and detail screens. Version 0.6.0 adds F1 catalogue search, phone pairing, an encrypted on-device session store, live session feed selection, and an in-app DASH/Widevine player with full-screen and live-window controls. The catalogue, search, account pairing, onboard-feed selection, and 1080p protected playback have been verified on an LG C2 running webOS 11.2.0. It uses the account's own F1 subscription and the TV's Widevine pipeline. It does not decrypt, record, or redistribute protected streams.
+The app reads F1 TV's menu and catalogue feeds into its own webOS home, sections, and detail screens. Version 0.12.0 separates video feed selection from audio and subtitles, adds subtitle track controls when a feed provides them, and uses webOS history for predictable remote Back behavior through playback panels and controls. The app also supports catalogue search, phone pairing, an encrypted on-device session store, live session feed selection, and an in-app DASH/Widevine player with full-screen and live-window controls. Playback and navigation have been verified on an LG C2 running webOS 11.2.0. It uses the account's own F1 subscription and the TV's Widevine pipeline. It does not decrypt, record, or redistribute protected streams.
 
 ## Development
 
