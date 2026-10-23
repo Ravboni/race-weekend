@@ -10,6 +10,8 @@
   <a href="https://github.com/Ravboni/race-weekend-viewer/releases/latest">Download the latest release</a>
   ·
   <a href="docs/INSTALL.md">Installation guide</a>
+  ·
+  <a href="CONTRIBUTING.md">Contributing</a>
 </p>
 
 **Race Weekend Viewer is built to bring F1 TV to LG webOS televisions.** It lets you sign in with your own F1 TV account, browse F1 TV's catalogue, and watch the streams available to your subscription using the television's web runtime and media capabilities. It is a webOS app in its own right, not the Android TV app running through an emulator.
