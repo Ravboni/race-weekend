@@ -1,10 +1,10 @@
 <p align="center">
-  <img src="assets/brand/f1tv-car-icon.png" alt="Red open-wheel race car app icon on a charcoal background" width="160">
+  <img src="assets/brand/race-weekend-viewer-car-icon.png" alt="Red open-wheel race car app icon on a charcoal background" width="160">
 </p>
 
-<h1 align="center">F1 TV for webOS</h1>
+<h1 align="center">Race Weekend Viewer</h1>
 
-<p align="center">An unofficial, remote-friendly F1 TV client for LG webOS televisions.</p>
+<p align="center">An unofficial, remote-friendly way to watch F1 TV on LG webOS.</p>
 
 <p align="center">
   <a href="https://github.com/Ravboni/f1tv-webos/releases/latest">Download the latest release</a>
@@ -12,7 +12,7 @@
   <a href="docs/INSTALL.md">Installation guide</a>
 </p>
 
-This is a webOS app built for the television. It is not the Android TV app running through an emulator. It presents F1 TV's catalogue and plays streams using the TV's web runtime and media capabilities.
+**Race Weekend Viewer is built to bring F1 TV to LG webOS televisions.** It lets you sign in with your own F1 TV account, browse F1 TV's catalogue, and watch the streams available to your subscription using the television's web runtime and media capabilities. It is a webOS app in its own right, not the Android TV app running through an emulator.
 
 > **Unofficial and experimental.** This project is not affiliated with or endorsed by Formula 1, F1 TV, or Liberty Media. It requires an F1 TV account with the appropriate subscription. F1 may change its services, API, account flow, regional availability, or DRM requirements at any time.
 
@@ -20,7 +20,7 @@ This is a webOS app built for the television. It is not the Android TV app runni
 
 | | |
 | --- | --- |
-| Current release | [0.16.23](https://github.com/Ravboni/f1tv-webos/releases/tag/v0.16.23) |
+| Current release | [0.16.24](https://github.com/Ravboni/f1tv-webos/releases/tag/v0.16.24) |
 | Verified device | LG C2, webOS 11.2.0 |
 | Install package | `.ipk` from GitHub Releases |
 | TV setup | Rooted or Developer Mode |
@@ -32,7 +32,7 @@ The C2 is the only tested model. Other LG webOS TVs may work, but have not been 
 
 1. Download the `.ipk` from [the latest release](https://github.com/Ravboni/f1tv-webos/releases/latest).
 2. Install it using [webOS Dev Manager](https://github.com/webosbrew/dev-manager-desktop/releases/latest) or LG's webOS CLI.
-3. Open **F1 TV** on the TV and follow the on-screen phone-pairing steps.
+3. Open **Race Weekend Viewer** on the TV and follow the on-screen phone-pairing steps for your F1 TV account.
 
 The [installation guide](docs/INSTALL.md) explains rooted TV and Developer Mode setup, install and update steps, CLI commands, and uninstalling. The package includes a SHA-256 checksum.
 
@@ -79,11 +79,11 @@ cd f1tv-webos
 The package is created under `dist/`. To install it, register your TV with `ares-setup-device`, then run:
 
 ```sh
-ares-install --device myTV ./dist/com.ravboni.f1tv.webos_0.16.23_all.ipk
+ares-install --device myTV ./dist/com.ravboni.f1tv.webos_0.16.24_all.ipk
 ares-launch --device myTV com.ravboni.f1tv.webos
 ```
 
-Pushing a version tag such as `v0.16.23` runs the GitHub Actions release workflow. It packages the app and attaches the `.ipk` and checksum to the GitHub release.
+Pushing a version tag such as `v0.16.24` runs the GitHub Actions release workflow. It packages the app and attaches the `.ipk` and checksum to the GitHub release.
 
 ## Account data and safe bug reports
 
@@ -93,7 +93,7 @@ When reporting a problem, include the TV model, webOS version, app version, even
 
 ## App icon
 
-The launcher mark is a purpose-made, unbranded race-car illustration. The high-resolution source artwork is [`assets/brand/f1tv-car-icon-master.png`](assets/brand/f1tv-car-icon-master.png), and [`assets/brand/f1tv-car-icon.png`](assets/brand/f1tv-car-icon.png) is its 512px preview. The app packages separate 80×80 small and 130×130 large icons as required by webOS. The design uses a centered, high-contrast silhouette with padding so it remains recognizable at launcher size. It follows the [Android TV safe-area and simplicity guidance](https://developer.android.com/design/ui/tv/guides/system/tv-app-icon-guidelines) and the [LG webOS app icon requirements](https://webostv.developer.lge.com/develop/references/appinfo-json).
+The launcher mark is a purpose-made, unbranded race-car illustration. The high-resolution source artwork is [`assets/brand/race-weekend-viewer-car-icon-master.png`](assets/brand/race-weekend-viewer-car-icon-master.png), and [`assets/brand/race-weekend-viewer-car-icon.png`](assets/brand/race-weekend-viewer-car-icon.png) is its 512px preview. The app packages separate 80×80 small and 130×130 large icons as required by webOS. The design uses a centered, high-contrast silhouette with padding so it remains recognizable at launcher size. It follows the [Android TV safe-area and simplicity guidance](https://developer.android.com/design/ui/tv/guides/system/tv-app-icon-guidelines) and the [LG webOS app icon requirements](https://webostv.developer.lge.com/develop/references/appinfo-json).
 
 ## Third-party software and project license
 

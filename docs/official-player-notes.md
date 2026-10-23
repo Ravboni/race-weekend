@@ -1,4 +1,4 @@
-# F1 TV client observations
+# F1 TV service observations
 
 These notes describe requests observed in the signed-in F1 TV TV-web client on an LG C2. They contain endpoint shapes only; account tokens, signed URLs, DRM challenge data, and license responses are deliberately excluded.
 
