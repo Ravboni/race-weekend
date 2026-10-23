@@ -158,3 +158,90 @@ button { color: inherit; font: inherit; }
   .nav-button { font-size: 12px; }
   .content-rails { padding-inline: 4vw; }
 }
+
+/* The C2 runs this app in a 1920×1080 CSS viewport and upscales it to 4K.
+   Keep TV text and remote targets legible at sofa distance in that coordinate space. */
+@media (min-width: 1600px) {
+  .topbar { height: 108px; min-height: 108px; }
+  .brand { width: 175px; flex-basis: 175px; }
+  .brand-mark { font-size: 42px; }
+  .brand-name { font-size: 29px; }
+  .primary-nav { gap: 32px; }
+  .nav-button { font-size: 20px; }
+  .profile-chip { min-height: 75px; gap: 13px; font-size: 17px; }
+  .profile-avatar { width: 44px; height: 44px; font-size: 18px; }
+
+  .hero { height: min(700px, 65vh); min-height: 540px; }
+  .hero-copy { width: min(800px, 58vw); }
+  .hero-badge { gap: 12px; margin-bottom: 24px; font-size: 15px; }
+  .hero-grand-prix { font-size: 21px; }
+  .hero-title { max-width: 760px; font-size: clamp(64px, 5vw, 88px); }
+  .hero-description { max-width: 650px; margin: 24px 0 32px; font-size: 22px; }
+  .button { min-width: 190px; min-height: 75px; padding-inline: 25px; font-size: 20px; }
+  .play-icon { font-size: 20px; }
+  .hero-indicators { gap: 8px; margin-top: 34px; }
+  .hero-indicator { width: 22px; height: 6px; }
+  .hero-indicator.active { width: 40px; }
+
+  .content-section { margin-top: 32px; }
+  .section-header { margin-bottom: 17px; }
+  .section-title { font-size: 28px; }
+  .view-all { min-height: 75px; font-size: 16px; }
+  .content-rail { gap: 22px; padding: 10px 7px 22px; }
+  .content-card { width: 360px; min-width: 360px; }
+  .content-card-image { height: 203px; }
+  .content-card-copy { padding: 13px 3px 0; }
+  .content-series { margin-bottom: 6px; font-size: 14px; }
+  .content-title { font-size: 19px; }
+  .content-subtitle { margin-top: 6px; font-size: 16px; }
+  .live-label, .duration-label { bottom: 12px; padding: 7px 10px; font-size: 13px; }
+  .live-label { top: 12px; right: 12px; bottom: auto; }
+
+  .page-label { margin-top: 54px; font-size: 46px; }
+  .search-view { padding-top: 50px; }
+  .search-heading { font-size: 46px; }
+  .search-form { max-width: 1000px; gap: 16px; }
+  .search-form input { height: 72px; padding-inline: 22px; font-size: 21px; }
+  .search-message { margin: 21px 0 27px; font-size: 18px; }
+  .search-results-grid { grid-template-columns: repeat(4,minmax(0,1fr)); gap: 28px 22px; }
+
+  .detail-content { width: min(900px, 72vw); }
+  .back-button { min-height: 75px; margin-bottom: 56px; gap: 11px; font-size: 20px; }
+  .detail-backdrop + .detail-content .back-button span { font-size: 36px; }
+  .detail-eyebrow { margin-bottom: 17px; font-size: 15px; }
+  .detail-content h1, .error-view h1 { font-size: clamp(58px, 4.8vw, 82px); }
+  .detail-meta { margin-top: 20px; font-size: 20px; }
+  .detail-description { max-width: 680px; margin: 23px 0 31px; font-size: 21px; }
+  .channel-picker { margin-bottom: 30px; }
+  .channel-label { margin-bottom: 12px; font-size: 15px; }
+  .channel-options { gap: 12px; padding: 7px 6px 12px; }
+  .channel-option { min-height: 75px; padding-inline: 17px; font-size: 18px; }
+  .detail-note { margin-top: 22px; font-size: 15px; }
+
+  .player-chrome { padding: 45px 6vw 64px; }
+  .player-status { gap: 13px; font-size: 19px; }
+  .player-live-dot { width: 11px; height: 11px; }
+  .player-chrome h1 { margin: 6px 0 26px; font-size: 42px; }
+  .player-controls { gap: 17px; }
+  .player-options { width: min(680px, 40vw); padding: 36px 32px 48px; }
+  .player-options-heading { min-height: 56px; }
+  .player-options h2 { font-size: 30px; }
+  .player-options h3 { margin: 29px 0 13px; font-size: 16px; }
+  .player-option-list { gap: 11px; }
+  .player-option { min-height: 75px; gap: 18px; padding: 13px 21px; border-radius: 13px; font-size: 20px; }
+  .player-source-icon, .player-driver-dot { flex-basis: 30px; width: 30px; height: 30px; }
+  .player-source-icon { font-size: 30px; }
+  .player-source-divider { margin: 10px auto 13px; }
+  .player-options #player-audio-options .player-option { min-height: 68px; font-size: 18px; }
+  .player-options-note { font-size: 18px; }
+  .player-timeline { gap: 22px; margin-top: 19px; font-size: 17px; }
+  .player-timeline input { height: 12px; }
+  .player-error { font-size: 26px; }
+
+  .toast { right: 50px; bottom: 44px; max-width: 600px; padding: 17px 23px; font-size: 17px; }
+  .sign-in-card { width: min(650px, 80vw); padding: 44px; }
+  .sign-in-card h2 { font-size: 38px; }
+  .sign-in-card > p:not(.detail-eyebrow):not(.pairing-code) { font-size: 20px; }
+  .sign-in-card canvas { width: 240px; height: 240px; }
+  .pairing-code { font-size: 38px; }
+}
