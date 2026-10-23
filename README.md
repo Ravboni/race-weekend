@@ -4,7 +4,7 @@ An experimental client for rooted LG webOS televisions, starting with the LG C2.
 
 ## Status
 
-This is an early, installable webOS TV shell. It checks the TV runtime's video and DRM capabilities and can open the official F1 TV web player in the app. On an LG C2 running webOS 11.2.0, the official site loaded and displayed its cookie choice and live-session page. The TV reported MSE, Widevine Modular, PlayReady, and HEVC support. Sign-in and protected playback have not yet been verified. A native catalogue and player remain future work. The project will use a valid F1 TV subscription and the TV's supported DRM pipeline; it will not decrypt, record, or redistribute protected streams.
+This is an early, installable webOS TV shell. It checks the TV runtime's video and DRM capabilities and can open the official F1 TV web player in the app. On an LG C2 running webOS 11.2.0, the official site loaded, accepted the selected cookie preference, and reached the official F1 account sign-in page. The TV reported MSE, Widevine Modular, PlayReady, and HEVC support. Account sign-in and protected playback still need verification on a subscribed account. A native catalogue and player remain future work. The project will use a valid F1 TV subscription and the TV's supported DRM pipeline; it will not decrypt, record, or redistribute protected streams.
 
 ## Development
 
