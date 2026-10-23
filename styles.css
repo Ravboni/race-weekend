@@ -38,9 +38,13 @@ body {
 .eyebrow { margin: 0 0 19px; color: #f23953; font-size: 13px; font-weight: 700; letter-spacing: .22em; }
 h1 { margin: 0; font-size: clamp(44px, 5vw, 72px); line-height: 1.02; letter-spacing: -.045em; }
 .intro { max-width: 500px; margin: 25px 0 31px; color: #b5b5bc; font-size: 19px; line-height: 1.55; }
-.primary { min-width: 210px; padding: 16px 24px; border: 0; border-radius: 3px; background: #e10628; color: white; font-size: 17px; font-weight: 700; cursor: pointer; }
-.primary:focus-visible { outline: 4px solid #fff; outline-offset: 5px; }
+.actions { display: flex; align-items: center; gap: 18px; }
+.primary, .secondary { min-width: 210px; padding: 16px 24px; border: 0; border-radius: 3px; font-size: 17px; font-weight: 700; cursor: pointer; }
+.primary { background: #e10628; color: white; }
 .primary:active { background: #b9001c; }
+.secondary { min-width: 170px; border: 1px solid #55565d; background: #1a1b20; color: #e7e7ea; }
+.primary:focus-visible, .secondary:focus-visible { outline: 4px solid #fff; outline-offset: 5px; }
+.secondary:active { background: #2b2c32; }
 
 .telemetry { padding: 29px 31px 24px; border: 1px solid #34353b; border-radius: 6px; background: linear-gradient(145deg, rgba(29, 30, 36, .95), rgba(18, 19, 23, .96)); box-shadow: 0 20px 70px rgba(0, 0, 0, .24); }
 .telemetry-heading { gap: 10px; padding-bottom: 19px; border-bottom: 1px solid #393a40; color: #e7e7ea; font-size: 12px; font-weight: 700; letter-spacing: .17em; }
@@ -59,4 +63,8 @@ footer { gap: 16px; border-top: 1px solid #292a2f; padding-top: 16px; color: #77
   .hero { gap: 5vw; padding: 0; }
   .screen { padding-inline: 4vw; }
   .telemetry { padding: 22px; }
+}
+
+@media (max-width: 1050px) {
+  .actions { flex-wrap: wrap; }
 }

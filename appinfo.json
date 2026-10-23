@@ -8,6 +8,7 @@
   "icon": "icon.png",
   "largeIcon": "icon.png",
   "resolution": "1920x1080",
+  "requiredACG": [],
   "disable Back History API": true,
   "supportTouchMode": false
 }

@@ -4,11 +4,11 @@ An experimental client for rooted LG webOS televisions, starting with the LG C2 
 
 ## Status
 
-This is an early, installable webOS TV shell. The first milestone checks the TV runtime's video and DRM capabilities. Login, catalogue access, and playback are not implemented yet. The project will use a valid F1 TV subscription and the TV's supported DRM pipeline; it will not decrypt, record, or redistribute protected streams.
+This is an early, installable webOS TV shell. It checks the TV runtime's video and DRM capabilities and can open the official F1 TV web player in the app. The official site may reject the webOS browser runtime; this is the first on-device compatibility experiment. A native catalogue and player are still future work. The project will use a valid F1 TV subscription and the TV's supported DRM pipeline; it will not decrypt, record, or redistribute protected streams.
 
 ## Development
 
-The app is a standard webOS TV web app. Install LG's webOS TV CLI, register your TV as a device, then package and install the project with the CLI:
+The app is a standard webOS TV web app. Install LG's current webOS CLI, register your TV as a device, then package and install the project with the CLI:
 
 ```sh
 ares-package .

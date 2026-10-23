@@ -55,4 +55,7 @@ async function runDeviceCheck() {
 document.addEventListener("DOMContentLoaded", () => {
   runDeviceCheck();
   document.getElementById("check-button").addEventListener("click", runDeviceCheck);
+  document.getElementById("open-f1-button").addEventListener("click", () => {
+    window.location.assign("https://f1tv.formula1.com/");
+  });
 });
