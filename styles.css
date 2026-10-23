@@ -929,3 +929,108 @@ button:focus, input:focus, select:focus, textarea:focus { outline: none; }
   .hero { height: min(600px, 56vh); min-height: 520px; }
   .content-card { width: 392px; min-width: 392px; }
 }
+
+/* Card featured carousel: Android TV 316dp card on the 1920x1080 CSS canvas.
+   The layout guide's 960x540dp canvas maps to 2 CSS px per dp here. */
+.hero {
+  display: flex;
+  width: min(1688px, calc(100vw - 232px)); /* 844dp, inside 58dp safe margins */
+  height: 632px; /* 316dp */
+  min-height: 632px;
+  margin: 56px auto 0;
+  align-items: center;
+  overflow: hidden;
+  border-radius: 32px;
+  background: #17181e;
+}
+.hero-backdrop {
+  background-position: center;
+}
+.hero-backdrop::after {
+  background:
+    linear-gradient(90deg, rgba(7,8,12,.94) 0%, rgba(7,8,12,.82) 27%, rgba(7,8,12,.35) 53%, rgba(7,8,12,.04) 100%),
+    linear-gradient(0deg, rgba(7,8,12,.40) 0%, transparent 32%);
+}
+.hero-copy {
+  display: flex;
+  width: 640px;
+  max-width: 100%;
+  height: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 0 0 64px 64px; /* 32dp inset, including the bottom content safe area */
+}
+.hero-badge,
+.hero-title,
+.hero-description,
+.hero-actions { max-width: 576px; width: 100%; }
+.hero-badge {
+  display: block;
+  overflow: hidden;
+  margin: 0 0 8px;
+  color: rgba(245,245,247,.72);
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 40px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hero-badge.is-live { color: #ff7183; }
+.hero-badge.is-live::before { width: 14px; height: 14px; margin-right: 12px; }
+.hero-title {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 56px;
+  font-weight: 600;
+  letter-spacing: -.025em;
+  line-height: 1.14;
+  text-overflow: ellipsis;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.hero-description {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 40px 0 56px;
+  color: rgba(245,245,247,.78);
+  font-size: 32px;
+  line-height: 40px;
+  text-shadow: none;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.hero-actions { gap: 0; }
+.hero-actions .button {
+  min-width: 0;
+  min-height: 80px;
+  gap: 16px;
+  padding-inline: 32px;
+  border-radius: 999px;
+  font-size: 32px;
+  font-weight: 600;
+}
+.hero-actions .play-icon { font-size: 32px; }
+.hero-indicators {
+  right: 64px;
+  bottom: 64px;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 999px;
+  background: rgba(18,19,24,.68);
+  backdrop-filter: blur(8px);
+}
+.hero-indicator,
+.hero-indicator.active {
+  width: 20px;
+  height: 20px;
+  flex-basis: 20px;
+}
+.hero-indicator.active { background: #fff; }
+.hero-indicator:focus { outline-color: #fff; outline-offset: 6px; }
+.hero + .content-rails { margin-top: 40px; }
+
+@media (max-width: 1200px) {
+  .hero { width: calc(100vw - 80px); }
+}

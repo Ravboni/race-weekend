@@ -234,10 +234,11 @@ function buildHero(container, selectedIndex = 0, focusSlide = false) {
 
   const copy = element("div", "hero-copy");
   copy.setAttribute("aria-live", "polite");
-  const badge = element("p", `hero-badge${metadata.contentSubtype === "LIVE" ? " is-live" : ""}`,
-    metadata.contentSubtype === "LIVE" ? "LIVE SESSION" : "FEATURED");
+  const meetingName = eventInfo.Meeting_Name || eventInfo.Global_Meeting_Name;
+  const badgeText = [metadata.contentSubtype === "LIVE" ? "LIVE SESSION" : "FEATURED", meetingName]
+    .filter(Boolean).join(" · ");
+  const badge = element("p", `hero-badge${metadata.contentSubtype === "LIVE" ? " is-live" : ""}`, badgeText);
   copy.append(badge);
-  copy.append(element("p", "hero-grand-prix", eventInfo.Meeting_Name || eventInfo.Global_Meeting_Name || "F1 TV"));
   copy.append(element("h1", "hero-title", metadata.titleBrief || metadata.title || "Watch F1 TV"));
   const description = metadata.longDescription || metadata.shortDescription || "Watch every moment with F1 TV.";
   copy.append(element("p", "hero-description", description));
@@ -250,11 +251,6 @@ function buildHero(container, selectedIndex = 0, focusSlide = false) {
   play.addEventListener("click", () => openContent(item));
   actions.append(play);
 
-  const details = element("button", "button button-glass focusable", "More info");
-  details.type = "button";
-  details.dataset.heroAction = "details";
-  details.addEventListener("click", () => openContent(item));
-  actions.append(details);
   copy.append(actions);
 
   const indicators = element("div", "hero-indicators");
@@ -292,10 +288,9 @@ function advanceHeroFromControl(key, control) {
   if (!action) return false;
   const items = contentList(state.heroContainer);
   if (items.length < 2) return false;
-  const actionIndex = action === "watch" ? 0 : 1;
-  const targetIndex = key === "ArrowRight" && actionIndex === 1
+  const targetIndex = key === "ArrowRight"
     ? state.heroIndex + 1
-    : key === "ArrowLeft" && actionIndex === 0
+    : key === "ArrowLeft"
       ? state.heroIndex - 1
       : -1;
   if (targetIndex < 0 || targetIndex >= items.length) return false;
