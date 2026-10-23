@@ -103,7 +103,8 @@ function isVideo(item) {
 function makeNav() {
   const nav = document.getElementById("primary-nav");
   nav.replaceChildren();
-  state.menu.forEach((entry, index) => {
+  const menuEntries = state.menu.filter((entry) => !["shows", "documentaries"].includes(entry.title.trim().toLocaleLowerCase()));
+  menuEntries.forEach((entry, index) => {
     const button = element("button", `nav-button focusable${index === 0 ? " active" : ""}`, entry.title);
     button.type = "button";
     button.dataset.uri = entry.uri;
