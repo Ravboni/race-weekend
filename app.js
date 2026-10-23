@@ -1129,6 +1129,15 @@ function moveFocus(event, key = event.key) {
   const current = document.activeElement;
   if (current.matches?.("input:not([type='range']), textarea, [contenteditable='true']")
       && (key === "ArrowLeft" || key === "ArrowRight")) return false;
+  const firstContentRail = document.querySelector("#content-rails .content-rail");
+  const heroAction = document.querySelector("#hero .hero-actions .focusable");
+  if (key === "ArrowUp" && current.matches?.(".content-card")
+      && current.closest(".content-rail") === firstContentRail && heroAction) {
+    event.preventDefault();
+    heroAction.focus({ preventScroll: true });
+    document.getElementById("main-content").scrollTop = 0;
+    return true;
+  }
   const items = focusables();
   if (!items.length) { event.preventDefault(); return true; }
   if (!items.includes(current)) {
@@ -1159,7 +1168,14 @@ function moveFocus(event, key = event.key) {
   event.preventDefault();
   if (best) {
     best.focus();
-    best.scrollIntoView({ block: "nearest", inline: "nearest" });
+    if (key === "ArrowUp" && best.closest("#hero")) {
+      // The large featured card fits inside the content viewport, but nearest
+      // scrolling can leave it partly above the screen after moving down a row.
+      // Restore the home scroll origin when D-pad focus returns to the hero.
+      document.getElementById("main-content").scrollTop = 0;
+    } else {
+      best.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }
   }
   return true;
 }
