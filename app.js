@@ -677,15 +677,17 @@ async function startPlayback(item) {
     const player = window.dashjs.MediaPlayer().create();
     state.dashPlayer = player;
     player.updateSettings({ debug: { logLevel: 0 }, streaming: { abr: { limitBitrateByPortal: false } } });
-    player.setProtectionData({
-      "com.widevine.alpha": {
-        serverURL: stream.licenseUrl,
-        httpRequestHeaders: stream.headers,
-        withCredentials: true,
-        audioRobustness: "HW_SECURE_CRYPTO",
-        videoRobustness: "HW_SECURE_DECODE",
-      },
-    });
+    if (stream.drmType === "widevine") {
+      player.setProtectionData({
+        "com.widevine.alpha": {
+          serverURL: stream.licenseUrl,
+          httpRequestHeaders: stream.headers,
+          withCredentials: true,
+          audioRobustness: "HW_SECURE_CRYPTO",
+          videoRobustness: "HW_SECURE_DECODE",
+        },
+      });
+    }
     player.on(window.dashjs.MediaPlayer.events.STREAM_INITIALIZED, () => {
       status.textContent = "Playing on F1 TV";
       try { state.audioTracks = player.getTracksFor("audio") || []; } catch (_error) { state.audioTracks = []; }

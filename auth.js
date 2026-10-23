@@ -240,19 +240,37 @@
       const data = await response.json();
       const result = data.resultObj;
       if (data.resultCode !== "OK" || !result) throw new Error("F1 TV did not provide a playable stream. Check your subscription and region.");
-      const candidates = Array.isArray(result) ? result : [result, ...(result.streams || [])];
-      const stream = candidates.find((candidate) => /DASH/i.test(candidate.streamType || "") && /widevine|WV/i.test(candidate.drmType || candidate.streamType || "")) || candidates.find((candidate) => candidate.url || candidate.manifestUrl);
-      if (!stream) throw new Error("F1 TV did not provide a video stream.");
+      const candidates = Array.isArray(result)
+        ? result
+        : [result, ...(Array.isArray(result.streams) ? result.streams : [])];
+      const dashCandidates = candidates.filter((candidate) => {
+        const manifest = candidate?.url || candidate?.manifestUrl;
+        return manifest && /^https:\/\//i.test(manifest) && /DASH/i.test(candidate.streamType || "");
+      });
+      const licenseAddress = (candidate) => candidate.laURL || candidate.laUrl || candidate.licenseUrl || "";
+      const drmLabel = (candidate) => String(candidate.drmType || candidate.drm || candidate.protectionType || "").toLowerCase();
+      const isWidevine = (candidate) => /widevine|(^|[^a-z])wv([^a-z]|$)/i.test(`${drmLabel(candidate)} ${candidate.streamType || ""}`);
+      const widevineStream = dashCandidates.find((candidate) => {
+        const licenseUrl = licenseAddress(candidate);
+        return isWidevine(candidate) && /^https:\/\//i.test(licenseUrl);
+      });
+      const clearDashStream = dashCandidates.find((candidate) => {
+        const label = drmLabel(candidate);
+        const profile = `${label} ${candidate.streamType || ""}`;
+        const explicitlyOtherDrm = /playready|fairplay|widevine|(^|[^a-z])wv([^a-z]|$)|encrypted|drm/i.test(profile);
+        return !explicitlyOtherDrm && (!label || /^(none|clear|unprotected)$/i.test(label)) && !licenseAddress(candidate);
+      });
+      const stream = widevineStream || clearDashStream;
+      if (!stream) throw new Error("F1 TV did not provide a playable DASH stream for this programme.");
       const manifest = stream.url || stream.manifestUrl;
-      const licenseUrl = stream.laURL || stream.laUrl || stream.licenseUrl;
-      if (!manifest || !/^https:\/\//i.test(manifest)) throw new Error("F1 TV returned an invalid video address.");
-      const drm = String(stream.drmType || (/WV/i.test(stream.streamType || "") ? "widevine" : "")).toLowerCase();
-      if (drm !== "widevine" || !licenseUrl || !/^https:\/\//i.test(licenseUrl)) throw new Error("F1 TV did not provide supported Widevine playback for this programme.");
+      const licenseUrl = licenseAddress(stream);
       return {
         manifest,
-        licenseUrl,
+        drmType: widevineStream ? "widevine" : "clear",
+        licenseUrl: widevineStream ? licenseUrl : "",
         headers: {
           ...this.headers(),
+          ...(result.entitlementToken ? { entitlementtoken: result.entitlementToken } : {}),
           ...(stream.entitlementToken ? { entitlementtoken: stream.entitlementToken } : {}),
           ...(stream.drmToken ? { customdata: stream.drmToken } : {}),
         },
