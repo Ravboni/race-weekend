@@ -252,3 +252,226 @@ button { color: inherit; font: inherit; }
   .sign-in-card canvas { width: 240px; height: 240px; }
   .pairing-code { font-size: 38px; }
 }
+
+/* Unified living-room design system inspired by Android TV components. */
+:root {
+  --canvas: #090b10;
+  --surface: #15171e;
+  --surface-raised: #20222a;
+  --surface-hover: #292b34;
+  --ink: #f7f7fa;
+  --ink-muted: #b8bbc5;
+  --ink-subtle: #898d99;
+  --accent: #ed143b;
+  --accent-bright: #ff3154;
+  --focus-ring: #ff526b;
+  --card-radius: 14px;
+}
+
+html, body { background: var(--canvas); }
+body { color: var(--ink); }
+.app-shell {
+  background: radial-gradient(ellipse at 78% 10%, rgba(237,20,59,.08), transparent 34%), var(--canvas);
+}
+
+/* Keep the main destinations calm and easy to scan from across the room. */
+.topbar {
+  height: 104px;
+  min-height: 104px;
+  padding-inline: 5.5vw;
+  border-bottom: 1px solid rgba(255,255,255,.09);
+  background: linear-gradient(180deg, rgba(15,16,22,.98), rgba(10,11,16,.96));
+}
+.brand { width: 168px; flex-basis: 168px; }
+.brand-mark { color: var(--accent); font-size: 39px; }
+.brand-name { margin-left: 10px; font-size: 25px; letter-spacing: .07em; }
+.primary-nav { gap: clamp(8px, 1vw, 20px); }
+.nav-button {
+  height: auto;
+  min-height: 56px;
+  padding: 0 15px;
+  border-radius: 12px;
+  color: var(--ink-muted);
+  font-size: 18px;
+  transition: color .15s ease, background .15s ease, transform .15s ease, box-shadow .15s ease;
+}
+.nav-button:hover, .nav-button.active { color: #fff; }
+.nav-button.active { background: rgba(237,20,59,.12); }
+.nav-button.active::after { right: 16px; bottom: 2px; left: 16px; height: 3px; border-radius: 3px; background: var(--accent); }
+.profile-chip { min-height: 64px; padding: 7px 13px 7px 7px; border-radius: 999px; font-size: 16px; }
+.profile-avatar { width: 42px; height: 42px; border-color: rgba(255,255,255,.22); background: linear-gradient(145deg,#3b3e48,#1b1d24); }
+
+/* A single featured story leads into large, image-first content rails. */
+.hero {
+  height: min(660px, 61vh);
+  min-height: 510px;
+  background-position: center 34%;
+}
+.hero::after {
+  background: linear-gradient(90deg, rgba(7,8,12,.42), transparent 58%), linear-gradient(0deg, var(--canvas) 0%, rgba(9,11,16,.04) 36%, rgba(9,11,16,.12) 100%);
+}
+.hero-copy { width: min(860px, 59vw); padding-left: 8vw; }
+.hero-badge { gap: 12px; margin-bottom: 20px; font-size: 14px; letter-spacing: .16em; }
+.hero-badge.is-live { color: #ff7387; }
+.hero-badge.is-live::before { width: 10px; height: 10px; background: var(--accent); box-shadow: 0 0 16px rgba(237,20,59,.8); }
+.hero-grand-prix { margin-bottom: 14px; color: #ededf2; font-size: 21px; }
+.hero-title { font-size: clamp(58px, 4.7vw, 82px); line-height: 1.02; letter-spacing: -.045em; }
+.hero-description { max-width: 640px; margin: 21px 0 28px; color: #e0e1e6; font-size: 20px; line-height: 1.5; }
+.hero-actions, .detail-actions { gap: 16px; }
+.button {
+  min-width: 170px;
+  min-height: 64px;
+  padding-inline: 25px;
+  border-radius: 999px;
+  font-size: 18px;
+  font-weight: 750;
+}
+.button-primary { background: var(--accent); }
+.button-primary:hover { background: var(--accent-bright); }
+.button-glass, .button-secondary { border-color: rgba(255,255,255,.34); background: rgba(25,27,34,.78); }
+.button-glass:hover, .button-secondary:hover { background: var(--surface-hover); }
+.hero-indicators { gap: 9px; margin-top: 28px; }
+.hero-indicator { width: 22px; height: 7px; border-radius: 6px; background: rgba(255,255,255,.4); }
+.hero-indicator.active { width: 42px; background: var(--accent); }
+
+.content-rails { padding-inline: 5.5vw; }
+.home-view { padding-bottom: 72px; }
+.content-section { margin-top: 27px; }
+.section-header { align-items: center; margin-bottom: 13px; }
+.section-title { font-size: 27px; font-weight: 750; letter-spacing: -.025em; }
+.view-all { min-height: 46px; padding: 0 12px; border-radius: 999px; color: var(--ink-muted); font-size: 16px; }
+.view-all:hover { background: rgba(255,255,255,.08); color: #fff; }
+.content-rail { gap: 22px; padding: 12px 9px 22px; }
+.content-card {
+  width: 350px;
+  min-width: 350px;
+  border-radius: var(--card-radius);
+  transition: transform .16s ease, filter .16s ease;
+}
+.content-card-image {
+  height: auto;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--card-radius);
+  background-image: linear-gradient(0deg,rgba(0,0,0,.5),transparent 58%),var(--card-image);
+  box-shadow: 0 7px 24px rgba(0,0,0,.32);
+  transition: filter .16s ease, box-shadow .16s ease;
+}
+.content-card-image::after { border-color: rgba(255,255,255,.12); border-radius: inherit; }
+.content-card-copy { padding: 13px 3px 2px; }
+.content-series { margin-bottom: 6px; color: var(--ink-subtle); font-size: 13px; letter-spacing: .1em; }
+.content-title { color: var(--ink); font-size: 18px; line-height: 1.32; }
+.content-subtitle { margin-top: 5px; color: var(--ink-muted); font-size: 15px; }
+.live-label, .duration-label { bottom: 11px; padding: 7px 10px; border-radius: 5px; font-size: 12px; }
+.live-label { top: 11px; right: 11px; background: var(--accent); }
+
+/* Search and details share the same spacious type scale and surface language. */
+.search-view { padding: 38px 5.5vw 64px; }
+.search-view > .back-button { margin-bottom: 12px; }
+.search-heading { margin-bottom: 23px; font-size: 42px; }
+.search-form { max-width: 1040px; gap: 16px; }
+.search-form input {
+  height: 68px;
+  padding-inline: 22px;
+  border-color: rgba(255,255,255,.2);
+  border-radius: 14px;
+  background: var(--surface);
+  font-size: 20px;
+}
+.search-message { min-height: 24px; margin: 19px 0 24px; color: var(--ink-muted); font-size: 16px; }
+.search-results-grid { grid-template-columns: repeat(4,minmax(0,1fr)); gap: 30px 22px; max-width: 100%; }
+.search-results-grid .content-card { width: 100%; min-width: 0; }
+.search-results-grid .content-card-image { height: auto; aspect-ratio: 16 / 9; }
+.detail-view { background: var(--canvas); }
+.detail-backdrop { background-position: center 38%; }
+.detail-backdrop::after { position: absolute; inset: 0; background: linear-gradient(90deg,rgba(8,9,13,.95) 0%,rgba(8,9,13,.76) 44%,rgba(8,9,13,.12) 100%),linear-gradient(0deg,rgba(8,9,13,.5),transparent 65%); content: ""; }
+.detail-content { width: min(880px, 72vw); padding-left: 8vw; }
+.back-button { min-height: 54px; gap: 10px; margin-bottom: 35px; border-radius: 999px; color: #e1e2e7; font-size: 17px; }
+.back-button span { font-size: 31px; }
+.detail-eyebrow { margin-bottom: 15px; color: #ff536d; font-size: 14px; letter-spacing: .14em; }
+.detail-content h1, .error-view h1 { font-size: clamp(52px, 4.5vw, 76px); line-height: 1.04; }
+.detail-meta { margin-top: 17px; color: #e2e3e8; font-size: 18px; }
+.detail-description { max-width: 650px; margin: 20px 0 28px; color: #d0d2d9; font-size: 19px; line-height: 1.55; }
+.channel-picker { max-width: 100%; margin: 0 0 22px; }
+.channel-label { margin-bottom: 10px; color: var(--ink-muted); font-size: 14px; letter-spacing: .1em; }
+.channel-options { max-width: 100%; gap: 10px; padding: 7px 5px 12px; }
+.channel-option { min-height: 58px; padding-inline: 17px; border-color: rgba(255,255,255,.22); border-radius: 999px; background: rgba(21,23,30,.9); font-size: 15px; }
+.channel-option.is-selected { border-color: var(--accent); background: rgba(237,20,59,.22); }
+.detail-note { margin-top: 18px; color: var(--ink-subtle); font-size: 14px; }
+
+/* Player controls and side-panel choices remain readable over video. */
+.player-chrome { padding: 42px 5.5vw 52px; background: linear-gradient(180deg,rgba(0,0,0,.8),transparent 32%,transparent 58%,rgba(0,0,0,.8)); }
+.player-status { font-size: 18px; }
+.player-chrome h1 { margin: 6px 0 21px; font-size: 38px; }
+.player-controls { gap: 14px; }
+.player-timeline { gap: 20px; margin-top: 16px; font-size: 16px; }
+.player-timeline input { height: 10px; }
+.player-options { width: min(610px, 40vw); padding: 34px 30px 42px; background: rgba(12,13,18,.98); }
+.player-options h2 { font-size: 28px; }
+.player-options h3 { color: #c5c7cf; font-size: 14px; }
+.player-option { min-height: 68px; border-radius: 12px; background: #24262e; font-size: 18px; }
+.player-options #player-audio-options .player-option { min-height: 60px; font-size: 16px; }
+.player-source-divider { background: rgba(255,255,255,.42); }
+
+/* Reusable TV focus: scale the target and keep a crisp red/white boundary. */
+.focusable:focus { outline: none; box-shadow: 0 0 0 3px var(--focus-ring), 0 10px 25px rgba(0,0,0,.46); }
+.button:focus { transform: scale(1.06); box-shadow: 0 0 0 3px #fff, 0 0 0 7px var(--accent), 0 12px 28px rgba(0,0,0,.46); }
+.nav-button:focus { transform: scale(1.06); border-radius: 12px; background: rgba(237,20,59,.24); box-shadow: 0 0 0 2px #fff, 0 0 0 5px var(--accent); }
+.content-card:focus { transform: scale(1.055); border-radius: var(--card-radius); box-shadow: 0 0 0 4px #fff, 0 0 0 8px var(--accent), 0 16px 34px rgba(0,0,0,.56); }
+.content-card:focus .content-card-image { filter: brightness(1.12); }
+.player-option:focus { transform: scale(1.04); border-color: var(--accent-bright); background: #491723; color: #fff; box-shadow: 0 0 0 2px #fff, 0 0 0 5px var(--accent), 0 10px 24px rgba(0,0,0,.44); }
+.player-option.is-selected:focus { border-color: #fff; background: #fff; color: #14151a; box-shadow: 0 0 0 3px #fff, 0 0 0 7px var(--accent), 0 10px 24px rgba(0,0,0,.44); }
+.channel-option:focus { transform: scale(1.06); border-color: #fff; background: var(--accent); color: #fff; box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--accent); }
+.hero-indicator:focus { transform: scale(1.2); box-shadow: 0 0 0 3px #fff, 0 0 0 6px var(--accent); }
+.player-timeline input:focus { filter: drop-shadow(0 0 7px rgba(237,20,59,.9)); }
+
+.loading-state { min-height: 280px; color: var(--ink-muted); font-size: 17px; }
+.loading-spinner { width: 22px; height: 22px; border-width: 3px; border-top-color: var(--accent); }
+.error-view { max-width: 860px; margin: 15vh auto; padding-inline: 34px; }
+.error-view .detail-description { margin-inline: auto; }
+.toast { right: 5vw; bottom: 4vh; max-width: 620px; padding: 16px 22px; border-color: rgba(255,255,255,.17); border-radius: 12px; background: var(--surface-raised); font-size: 16px; }
+.sign-in-card { width: min(660px, 82vw); padding: 42px; border-color: rgba(255,255,255,.16); border-radius: 20px; background: #181a21; }
+.sign-in-card h2 { font-size: 36px; }
+.sign-in-card > p:not(.detail-eyebrow):not(.pairing-code) { color: var(--ink-muted); font-size: 19px; }
+
+@media (min-width: 1600px) {
+  .topbar { height: 104px; min-height: 104px; }
+  .brand { width: 168px; flex-basis: 168px; }
+  .brand-mark { font-size: 39px; }
+  .brand-name { font-size: 25px; }
+  .primary-nav { gap: clamp(8px, 1vw, 20px); }
+  .nav-button { font-size: 18px; }
+  .profile-chip { min-height: 64px; font-size: 16px; }
+  .profile-avatar { width: 42px; height: 42px; font-size: 17px; }
+  .hero { height: min(660px, 61vh); min-height: 510px; }
+  .hero-copy { width: min(860px, 59vw); }
+  .hero-title { font-size: clamp(58px, 4.7vw, 82px); }
+  .button { min-width: 170px; min-height: 64px; font-size: 18px; }
+  .content-card { width: 350px; min-width: 350px; }
+  .content-card-image { height: auto; }
+  .content-title { font-size: 18px; }
+  .content-subtitle { font-size: 15px; }
+  .search-form input { height: 68px; font-size: 20px; }
+  .search-results-grid .content-card { width: 100%; min-width: 0; }
+  .detail-content h1, .error-view h1 { font-size: clamp(52px, 4.5vw, 76px); }
+  .detail-description { font-size: 19px; }
+  .channel-option { min-height: 58px; font-size: 15px; }
+  .player-chrome h1 { font-size: 38px; }
+  .player-options { width: min(610px, 40vw); }
+  .player-options h2 { font-size: 28px; }
+  .player-option { min-height: 68px; font-size: 18px; }
+  .player-options #player-audio-options .player-option { min-height: 60px; font-size: 16px; }
+}
+
+@media (max-width: 1250px) {
+  .topbar { padding-inline: 3vw; }
+  .brand { width: 115px; flex-basis: 115px; }
+  .primary-nav { gap: 5px; }
+  .nav-button { padding-inline: 9px; font-size: 14px; }
+  .content-rails { padding-inline: 4vw; }
+  .content-card { width: 300px; min-width: 300px; }
+  .content-card-image { height: auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}

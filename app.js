@@ -888,7 +888,9 @@ function moveFocus(event, key = event.key) {
     const primary = (x - cx) * dx + (y - cy) * dy;
     if (primary <= 0) return;
     const cross = Math.abs((x - cx) * dy - (y - cy) * dx);
-    const score = primary + cross * 2.2;
+    // Prefer controls in the same visual row/column before jumping to a nearby
+    // item in a different row, which is especially important on a TV remote.
+    const score = primary + cross * 4;
     if (score < bestScore) { best = item; bestScore = score; }
   });
   event.preventDefault();
