@@ -42,7 +42,14 @@ function element(tagName, className, text) {
 }
 
 async function apiRequest(path, headers = {}) {
-  const response = await fetch(`${API_ORIGIN}${path}`, {
+  if (typeof path !== "string" || !path.startsWith("/")) {
+    throw new Error("Unexpected F1 TV API path.");
+  }
+  const url = new URL(path, API_ORIGIN);
+  if (url.origin !== API_ORIGIN) {
+    throw new Error("Unexpected F1 TV API path.");
+  }
+  const response = await fetch(url.href, {
     credentials: "include",
     headers: { accept: "application/json", ...headers },
   });
