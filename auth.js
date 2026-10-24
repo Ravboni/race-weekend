@@ -3,8 +3,20 @@
 
   const ID_ORIGIN = "https://id.formula1.com/as/";
   const F1_ORIGIN = "https://f1tv.formula1.com";
+  const MANIFEST_HOSTS = new Set(["f1prodlive.akamaized.net", "f1tv.formula1.com"]);
+  const LICENSE_HOSTS = new Set(["f1tv.formula1.com"]);
   const DEVICE_CLIENT_ID = "13c21153-f2f3-484b-a642-f2a2927e55de";
   const STORAGE_NAME = "f1tv-webos-session-v1";
+
+  function trustedPlaybackUrl(value, allowedHosts) {
+    try {
+      const url = new URL(value);
+      if (url.protocol !== "https:" || url.port || url.username || url.password || !allowedHosts.has(url.hostname)) return "";
+      return url.href;
+    } catch (_error) {
+      return "";
+    }
+  }
 
   function decodeBase64Url(input) {
     let value = input.replace(/-/g, "+").replace(/_/g, "/");
@@ -244,15 +256,15 @@
         ? result
         : [result, ...(Array.isArray(result.streams) ? result.streams : [])];
       const dashCandidates = candidates.filter((candidate) => {
-        const manifest = candidate?.url || candidate?.manifestUrl;
-        return manifest && /^https:\/\//i.test(manifest) && /DASH/i.test(candidate.streamType || "");
+        const manifest = trustedPlaybackUrl(candidate?.url || candidate?.manifestUrl, MANIFEST_HOSTS);
+        return manifest && /DASH/i.test(candidate.streamType || "");
       });
       const licenseAddress = (candidate) => candidate.laURL || candidate.laUrl || candidate.licenseUrl || "";
       const drmLabel = (candidate) => String(candidate.drmType || candidate.drm || candidate.protectionType || "").toLowerCase();
       const isWidevine = (candidate) => /widevine|(^|[^a-z])wv([^a-z]|$)/i.test(`${drmLabel(candidate)} ${candidate.streamType || ""}`);
       const widevineStream = dashCandidates.find((candidate) => {
-        const licenseUrl = licenseAddress(candidate);
-        return isWidevine(candidate) && /^https:\/\//i.test(licenseUrl);
+        const licenseUrl = trustedPlaybackUrl(licenseAddress(candidate), LICENSE_HOSTS);
+        return isWidevine(candidate) && Boolean(licenseUrl);
       });
       const clearDashStream = dashCandidates.find((candidate) => {
         const label = drmLabel(candidate);
@@ -262,18 +274,17 @@
       });
       const stream = widevineStream || clearDashStream;
       if (!stream) throw new Error("F1 TV did not provide a playable DASH stream for this programme.");
-      const manifest = stream.url || stream.manifestUrl;
-      const licenseUrl = licenseAddress(stream);
+      const manifest = trustedPlaybackUrl(stream.url || stream.manifestUrl, MANIFEST_HOSTS);
+      const licenseUrl = widevineStream ? trustedPlaybackUrl(licenseAddress(stream), LICENSE_HOSTS) : "";
+      const licenseHeaders = {};
+      const entitlementToken = stream.entitlementToken || result.entitlementToken || this.entitlement;
+      if (entitlementToken) licenseHeaders.entitlementtoken = entitlementToken;
+      if (stream.drmToken) licenseHeaders.customdata = stream.drmToken;
       return {
         manifest,
         drmType: widevineStream ? "widevine" : "clear",
         licenseUrl: widevineStream ? licenseUrl : "",
-        headers: {
-          ...this.headers(),
-          ...(result.entitlementToken ? { entitlementtoken: result.entitlementToken } : {}),
-          ...(stream.entitlementToken ? { entitlementtoken: stream.entitlementToken } : {}),
-          ...(stream.drmToken ? { customdata: stream.drmToken } : {}),
-        },
+        headers: widevineStream ? licenseHeaders : {},
       };
     }
   }
