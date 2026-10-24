@@ -24,13 +24,13 @@
 
 | | |
 | --- | --- |
-| Development version | 0.16.25 (no release package published here yet) |
-| Verified device | LG C2, webOS 11.2.0 |
+| Latest release | [v0.16.27](https://github.com/Ravboni/race-weekend/releases/tag/v0.16.27) |
+| Verified devices | LG C2, webOS 11.2.0; LG OLED55E9PLA, webOS 4.5 / firmware 05.50.00 |
 | Install package | `.ipk` from GitHub Releases |
 | TV setup | Rooted or Developer Mode |
 | Subscription | Your own F1 TV subscription |
 
-The C2 is the only tested model. Other LG webOS TVs may work, but have not been verified.
+Both TVs have been checked end to end. On the OLED55E9PLA, the development build loaded the catalogue and artwork, completed F1 phone pairing, supported remote navigation, and played the 2026 United States GP Practice 2 Highlights with picture and audio. Other models and firmware versions may behave differently.
 
 ## Install on your TV
 
@@ -74,7 +74,8 @@ The app requests streams allowed by the signed-in account and uses webOS playbac
 
 - A stream may be unavailable because of subscription tier, region, event rights, or F1's response for that item.
 - Replay DRM metadata is not consistent across every archive item. Some replays may not play on a particular TV even when the account can open their details.
-- Playback compatibility depends on the TV model and webOS firmware. Only the LG C2 on webOS 11.2.0 has been checked end to end.
+- Playback compatibility depends on the TV model and webOS firmware. The LG C2 on webOS 11.2.0 and OLED55E9PLA on webOS 4.5 / firmware 05.50.00 have been checked end to end; other models may behave differently.
+- Older webOS browsers use a capability-detected compatibility path for layout, JavaScript APIs, account pairing, and remote navigation. This path was verified on the OLED55E9PLA (Chromium 53).
 - Changes to F1's services may temporarily break sign-in, catalogue browsing, or playback.
 
 ## Build from source
@@ -86,6 +87,7 @@ npm install --global @webos-tools/cli
 git clone https://github.com/Ravboni/race-weekend.git
 cd race-weekend
 git switch develop
+npm ci --ignore-scripts
 ./scripts/package.sh
 ```
 

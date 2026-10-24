@@ -33,6 +33,19 @@
     return JSON.parse(new TextDecoder().decode(decodeBase64Url(input)));
   }
 
+  function makeParams(values) {
+    const params = new URLSearchParams();
+    Object.keys(values).forEach((key) => params.append(key, String(values[key])));
+    return params;
+  }
+
+  function createPairingController() {
+    if (typeof AbortController === "function") return new AbortController();
+    // Older webOS browsers expose fetch but do not implement AbortController.
+    // Keep pairing functional there and ignore late responses after cancellation.
+    return { signal: undefined, abort() {} };
+  }
+
   async function database() {
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(STORAGE_NAME, 1);
@@ -105,7 +118,7 @@
   }
 
   async function deviceRequest(path, fields, signal) {
-    const body = new URLSearchParams(fields);
+    const body = makeParams(fields);
     return requestJson(`${ID_ORIGIN}${path}`, {
       method: "POST", signal,
       headers: { "content-type": "application/x-www-form-urlencoded", accept: "application/json" },
@@ -178,9 +191,10 @@
 
     async beginPairing() {
       this.cancelPairing();
-      const session = { controller: new AbortController(), code: "", userCode: "", nextPoll: 0, interval: 5000, expires: 0, cancelled: false, polling: false };
+      const session = { controller: createPairingController(), code: "", userCode: "", nextPoll: 0, interval: 5000, expires: 0, cancelled: false, polling: false };
       this.pending = session;
       const data = await deviceRequest("device_authorization", { client_id: DEVICE_CLIENT_ID, scope: "openid f1tv_groups" }, session.controller.signal);
+      if (session.cancelled || this.pending !== session) throw new Error("F1 TV sign-in was cancelled.");
       const url = new URL(data.verification_uri);
       if (url.protocol !== "https:" || url.hostname !== "f1.com" || url.pathname !== "/pair" || !/^[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(data.user_code || "") || !data.device_code) {
         this.cancelPairing();
@@ -207,6 +221,7 @@
           grant_type: "urn:ietf:params:oauth:grant-type:device_code",
           device_code: session.code,
         }, session.controller.signal);
+        if (session.cancelled || this.pending !== session) throw new Error("F1 TV sign-in was cancelled.");
         let claims;
         try { claims = decodeJsonPart(data.access_token.split(".")[1]); } catch (_error) { throw new Error("F1 TV returned an invalid sign-in response."); }
         if (!claims.subscriptionToken) throw new Error("F1 TV did not return the account session.");
@@ -249,7 +264,7 @@
 
     async play(contentId, channelId = "") {
       if (!this.signedIn) throw new Error("Sign in to F1 TV to play this programme.");
-      const params = new URLSearchParams({ contentId: String(contentId), player: "player_bm" });
+      const params = makeParams({ contentId: String(contentId), player: "player_bm" });
       if (channelId) params.set("channelId", String(channelId));
       const response = await fetch(`${F1_ORIGIN}/2.0/R/ENG/WEB_DASH/ALL/CONTENT/PLAY?${params}`, {
         credentials: "omit", headers: { ...this.headers(), accept: "application/json" },
