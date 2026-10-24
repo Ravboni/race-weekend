@@ -1156,3 +1156,11 @@ button:focus, input:focus, select:focus, textarea:focus { outline: none; }
   box-shadow: 0 8px 20px rgba(0,0,0,.38);
   transform: scale(1.035);
 }
+
+/* The current destination stays fully branded; focus remains a separate
+   state for inactive tabs. */
+.nav-button.active,
+.nav-button.active:focus {
+  background: var(--accent);
+  color: #fff;
+}

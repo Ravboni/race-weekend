@@ -31,6 +31,7 @@ const state = {
   signInReturnFocus: null,
   signOutReturnFocus: null,
   pendingSeekValue: null,
+  pageLoadSequence: 0,
 };
 
 function element(tagName, className, text) {
@@ -361,12 +362,14 @@ function renderPage(pageData, title) {
 }
 
 async function loadPage(uri, title, activeButton) {
+  const sequence = ++state.pageLoadSequence;
   const host = document.getElementById("content-rails");
   host.setAttribute("aria-busy", "true");
   if (activeButton) setActiveNav(activeButton);
   if (uri === API.home) state.homeData = null;
   try {
     const pageData = await apiRequest(uri);
+    if (sequence !== state.pageLoadSequence) return;
     if (uri === API.home) state.homeData = pageData;
     renderPage(pageData, title);
     setView("home");
@@ -376,12 +379,15 @@ async function loadPage(uri, title, activeButton) {
       if (navButton) setActiveNav(navButton);
     }
   } catch (error) {
+    if (sequence !== state.pageLoadSequence) return;
     host.removeAttribute("aria-busy");
     showToast(error.message || "Could not load this F1 TV section.");
   }
 }
 
 function openSearch() {
+  state.pageLoadSequence++;
+  document.getElementById("content-rails").removeAttribute("aria-busy");
   setView("search");
   const navButton = [...document.querySelectorAll(".nav-button")].find((button) => button.textContent === "Search");
   setActiveNav(navButton);
@@ -1309,6 +1315,7 @@ function onRemoteKey(event) {
     }
     return;
   }
+  if (activateAdjacentTab(event, key)) return;
   if (state.currentView === "home" && (key === "ArrowLeft" || key === "ArrowRight")
       && document.activeElement.closest?.("#hero")
       && advanceHeroFromControl(key, document.activeElement)) {
@@ -1316,6 +1323,24 @@ function onRemoteKey(event) {
     return;
   }
   moveFocus(event, key);
+}
+
+function activateAdjacentTab(event, key) {
+  if (key !== "ArrowLeft" && key !== "ArrowRight") return false;
+  const current = document.activeElement;
+  if (!current.matches?.("#primary-nav .nav-button")) return false;
+
+  const tabs = [...document.querySelectorAll("#primary-nav .nav-button")];
+  const index = tabs.indexOf(current);
+  const adjacent = tabs[index + (key === "ArrowRight" ? 1 : -1)];
+  if (!adjacent) return false;
+
+  event.preventDefault();
+  adjacent.click();
+  // Search normally moves focus into its input on a pointer click. Keep focus
+  // on the tab for D-pad navigation so the next arrow continues across tabs.
+  adjacent.focus({ preventScroll: true });
+  return true;
 }
 
 document.addEventListener("DOMContentLoaded", () => {
