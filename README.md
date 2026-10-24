@@ -24,7 +24,7 @@
 
 | | |
 | --- | --- |
-| Latest release | [v0.16.28](https://github.com/Ravboni/race-weekend/releases/tag/v0.16.28) |
+| Latest release | [v0.16.29](https://github.com/Ravboni/race-weekend/releases/tag/v0.16.29) |
 | Verified devices | LG C2, webOS 11.2.0; LG OLED55E9PLA, webOS 4.5 / firmware 05.50.00 |
 | Install package | `.ipk` from GitHub Releases |
 | TV setup | Rooted or Developer Mode |
