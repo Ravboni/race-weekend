@@ -31,6 +31,7 @@ const state = {
   signInReturnFocus: null,
   signOutReturnFocus: null,
   pendingSeekValue: null,
+  pageLoadSequence: 0,
 };
 
 function element(tagName, className, text) {
@@ -41,8 +42,15 @@ function element(tagName, className, text) {
 }
 
 async function apiRequest(path, headers = {}) {
-  const response = await fetch(`${API_ORIGIN}${path}`, {
-    credentials: "include",
+  if (typeof path !== "string" || !path.startsWith("/")) {
+    throw new Error("Unexpected F1 TV API path.");
+  }
+  const url = new URL(path, API_ORIGIN);
+  if (url.origin !== API_ORIGIN) {
+    throw new Error("Unexpected F1 TV API path.");
+  }
+  const response = await fetch(url.href, {
+    credentials: "omit",
     headers: { accept: "application/json", ...headers },
   });
   if (!response.ok) throw new Error(`F1 TV returned ${response.status}`);
@@ -72,7 +80,14 @@ function showToast(message) {
 function imageUrl(path, width, height) {
   if (!path) return "";
   const safePath = String(path).replace(/^\/+/, "");
-  return `${API_ORIGIN}/image-resizer/image/${safePath}?w=${width}&h=${height}&q=HI&o=L`;
+  const encodedPath = safePath.split("/").map((segment) => {
+    try {
+      return encodeURIComponent(decodeURIComponent(segment));
+    } catch (_error) {
+      return encodeURIComponent(segment);
+    }
+  }).join("/");
+  return `${API_ORIGIN}/image-resizer/image/${encodedPath}?w=${width}&h=${height}&q=HI&o=L`;
 }
 
 function contentList(container) {
@@ -104,7 +119,7 @@ function isVideo(item) {
 function makeNav() {
   const nav = document.getElementById("primary-nav");
   nav.replaceChildren();
-  const menuEntries = state.menu.filter((entry) => !["shows", "documentaries"].includes(entry.title.trim().toLocaleLowerCase()));
+  const menuEntries = state.menu.filter((entry) => !["shows", "documentaries", "my list"].includes(entry.title.trim().toLocaleLowerCase()));
   menuEntries.forEach((entry, index) => {
     const button = element("button", `nav-button focusable${index === 0 ? " active" : ""}`, entry.title);
     button.type = "button";
@@ -162,7 +177,7 @@ function focusDefault(name) {
       || document.querySelector(".content-rail .focusable")
       || document.querySelector(".nav-button"),
     search: () => document.getElementById("search-input"),
-    detail: () => document.getElementById("back-button"),
+    detail: () => document.getElementById("play-button") || document.getElementById("back-button"),
     player: () => document.getElementById("player-back"),
     error: () => document.getElementById("retry-button"),
   };
@@ -361,12 +376,14 @@ function renderPage(pageData, title) {
 }
 
 async function loadPage(uri, title, activeButton) {
+  const sequence = ++state.pageLoadSequence;
   const host = document.getElementById("content-rails");
   host.setAttribute("aria-busy", "true");
   if (activeButton) setActiveNav(activeButton);
   if (uri === API.home) state.homeData = null;
   try {
     const pageData = await apiRequest(uri);
+    if (sequence !== state.pageLoadSequence) return;
     if (uri === API.home) state.homeData = pageData;
     renderPage(pageData, title);
     setView("home");
@@ -376,12 +393,15 @@ async function loadPage(uri, title, activeButton) {
       if (navButton) setActiveNav(navButton);
     }
   } catch (error) {
+    if (sequence !== state.pageLoadSequence) return;
     host.removeAttribute("aria-busy");
     showToast(error.message || "Could not load this F1 TV section.");
   }
 }
 
 function openSearch() {
+  state.pageLoadSequence++;
+  document.getElementById("content-rails").removeAttribute("aria-busy");
   setView("search");
   const navButton = [...document.querySelectorAll(".nav-button")].find((button) => button.textContent === "Search");
   setActiveNav(navButton);
@@ -464,6 +484,7 @@ async function loadHome() {
 }
 
 function showDetail(item, fullMetadata) {
+  const enteringDetail = state.currentView !== "detail";
   const metadata = fullMetadata || item.metadata || {};
   const eventInfo = metadata.emfAttributes || {};
   const title = metadata.titleBrief || metadata.title || "F1 TV";
@@ -511,7 +532,7 @@ function showDetail(item, fullMetadata) {
     picker.hidden = true;
   }
   setView("detail");
-  document.getElementById("back-button").focus();
+  if (enteringDetail) document.getElementById("play-button").focus();
 }
 
 function playerOption(label, selected, onClick, disabled = false) {
@@ -1308,6 +1329,7 @@ function onRemoteKey(event) {
     }
     return;
   }
+  if (activateAdjacentTab(event, key)) return;
   if (state.currentView === "home" && (key === "ArrowLeft" || key === "ArrowRight")
       && document.activeElement.closest?.("#hero")
       && advanceHeroFromControl(key, document.activeElement)) {
@@ -1315,6 +1337,24 @@ function onRemoteKey(event) {
     return;
   }
   moveFocus(event, key);
+}
+
+function activateAdjacentTab(event, key) {
+  if (key !== "ArrowLeft" && key !== "ArrowRight") return false;
+  const current = document.activeElement;
+  if (!current.matches?.("#primary-nav .nav-button")) return false;
+
+  const tabs = [...document.querySelectorAll("#primary-nav .nav-button")];
+  const index = tabs.indexOf(current);
+  const adjacent = tabs[index + (key === "ArrowRight" ? 1 : -1)];
+  if (!adjacent) return false;
+
+  event.preventDefault();
+  adjacent.click();
+  // Search normally moves focus into its input on a pointer click. Keep focus
+  // on the tab for D-pad navigation so the next arrow continues across tabs.
+  adjacent.focus({ preventScroll: true });
+  return true;
 }
 
 document.addEventListener("DOMContentLoaded", () => {

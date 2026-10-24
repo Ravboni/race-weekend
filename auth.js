@@ -3,8 +3,22 @@
 
   const ID_ORIGIN = "https://id.formula1.com/as/";
   const F1_ORIGIN = "https://f1tv.formula1.com";
+  const MANIFEST_HOSTS = new Set(["f1prodlive.akamaized.net"]);
+  const LICENSE_HOSTS = new Set(["f1tv.formula1.com"]);
   const DEVICE_CLIENT_ID = "13c21153-f2f3-484b-a642-f2a2927e55de";
   const STORAGE_NAME = "f1tv-webos-session-v1";
+
+  function trustedPlaybackUrl(value, allowedHosts, allowFormula1Hosts = false) {
+    try {
+      const url = new URL(value);
+      const trustedHost = allowedHosts.has(url.hostname)
+        || (allowFormula1Hosts && (url.hostname === "formula1.com" || url.hostname.endsWith(".formula1.com")));
+      if (url.protocol !== "https:" || url.port || url.username || url.password || !trustedHost) return "";
+      return url.href;
+    } catch (_error) {
+      return "";
+    }
+  }
 
   function decodeBase64Url(input) {
     let value = input.replace(/-/g, "+").replace(/_/g, "/");
@@ -109,7 +123,7 @@
     if (header.alg !== "RS256" || !header.kid || !Number.isFinite(claims.exp) || claims.exp <= now || (claims.nbf && claims.nbf > now)) {
       throw new Error("The F1 TV account session has expired or is invalid.");
     }
-    const jwksResponse = await fetch("https://api.formula1.com/static/jwks.json", { credentials: "omit" });
+    const jwksResponse = await fetch("https://api.formula1.com/static/jwks.json", { credentials: "omit", redirect: "error" });
     if (!jwksResponse.ok) throw new Error("Could not verify the F1 TV account session.");
     const jwks = await jwksResponse.json();
     const jwk = (jwks.keys || []).find((candidate) => candidate.kid === header.kid && candidate.kty === "RSA");
@@ -164,7 +178,7 @@
 
     async beginPairing() {
       this.cancelPairing();
-      const session = { controller: new AbortController(), code: "", userCode: "", nextPoll: 0, interval: 5000, expires: 0, cancelled: false };
+      const session = { controller: new AbortController(), code: "", userCode: "", nextPoll: 0, interval: 5000, expires: 0, cancelled: false, polling: false };
       this.pending = session;
       const data = await deviceRequest("device_authorization", { client_id: DEVICE_CLIENT_ID, scope: "openid f1tv_groups" }, session.controller.signal);
       const url = new URL(data.verification_uri);
@@ -183,8 +197,10 @@
     async pollPairing() {
       const session = this.pending;
       if (!session || session.cancelled) throw new Error("F1 TV sign-in was cancelled.");
+      if (session.polling) return false;
       if (Date.now() >= session.expires) throw new Error("The TV sign-in code expired. Start again to get a new code.");
       if (Date.now() < session.nextPoll) return false;
+      session.polling = true;
       try {
         const data = await deviceRequest("token", {
           client_id: DEVICE_CLIENT_ID,
@@ -204,6 +220,8 @@
           return false;
         }
         throw error;
+      } finally {
+        session.polling = false;
       }
     }
 
@@ -234,7 +252,7 @@
       const params = new URLSearchParams({ contentId: String(contentId), player: "player_bm" });
       if (channelId) params.set("channelId", String(channelId));
       const response = await fetch(`${F1_ORIGIN}/2.0/R/ENG/WEB_DASH/ALL/CONTENT/PLAY?${params}`, {
-        credentials: "include", headers: { ...this.headers(), accept: "application/json" },
+        credentials: "omit", headers: { ...this.headers(), accept: "application/json" },
       });
       if (!response.ok) throw new Error(`F1 TV could not start playback (${response.status}).`);
       const data = await response.json();
@@ -244,15 +262,15 @@
         ? result
         : [result, ...(Array.isArray(result.streams) ? result.streams : [])];
       const dashCandidates = candidates.filter((candidate) => {
-        const manifest = candidate?.url || candidate?.manifestUrl;
-        return manifest && /^https:\/\//i.test(manifest) && /DASH/i.test(candidate.streamType || "");
+        const manifest = trustedPlaybackUrl(candidate?.url || candidate?.manifestUrl, MANIFEST_HOSTS, true);
+        return manifest && /DASH/i.test(candidate.streamType || "");
       });
       const licenseAddress = (candidate) => candidate.laURL || candidate.laUrl || candidate.licenseUrl || "";
       const drmLabel = (candidate) => String(candidate.drmType || candidate.drm || candidate.protectionType || "").toLowerCase();
       const isWidevine = (candidate) => /widevine|(^|[^a-z])wv([^a-z]|$)/i.test(`${drmLabel(candidate)} ${candidate.streamType || ""}`);
       const widevineStream = dashCandidates.find((candidate) => {
-        const licenseUrl = licenseAddress(candidate);
-        return isWidevine(candidate) && /^https:\/\//i.test(licenseUrl);
+        const licenseUrl = trustedPlaybackUrl(licenseAddress(candidate), LICENSE_HOSTS);
+        return isWidevine(candidate) && Boolean(licenseUrl);
       });
       const clearDashStream = dashCandidates.find((candidate) => {
         const label = drmLabel(candidate);
@@ -262,18 +280,17 @@
       });
       const stream = widevineStream || clearDashStream;
       if (!stream) throw new Error("F1 TV did not provide a playable DASH stream for this programme.");
-      const manifest = stream.url || stream.manifestUrl;
-      const licenseUrl = licenseAddress(stream);
+      const manifest = trustedPlaybackUrl(stream.url || stream.manifestUrl, MANIFEST_HOSTS, true);
+      const licenseUrl = widevineStream ? trustedPlaybackUrl(licenseAddress(stream), LICENSE_HOSTS) : "";
+      const licenseHeaders = {};
+      const entitlementToken = stream.entitlementToken || result.entitlementToken || this.entitlement;
+      if (entitlementToken) licenseHeaders.entitlementtoken = entitlementToken;
+      if (stream.drmToken) licenseHeaders.customdata = stream.drmToken;
       return {
         manifest,
         drmType: widevineStream ? "widevine" : "clear",
         licenseUrl: widevineStream ? licenseUrl : "",
-        headers: {
-          ...this.headers(),
-          ...(result.entitlementToken ? { entitlementtoken: result.entitlementToken } : {}),
-          ...(stream.entitlementToken ? { entitlementtoken: stream.entitlementToken } : {}),
-          ...(stream.drmToken ? { customdata: stream.drmToken } : {}),
-        },
+        headers: widevineStream ? licenseHeaders : {},
       };
     }
   }

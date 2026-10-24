@@ -4,7 +4,7 @@ Race Weekend Viewer is built to let you use F1 TV on an LG webOS television. Thi
 
 ## 1. Download the app
 
-Open [the latest Race Weekend Viewer release](https://github.com/Ravboni/race-weekend-viewer/releases/latest) and download the `.ipk` package. The release includes a `SHA256SUMS` file so you can check the download if desired.
+This sanitized repository does not have a release package yet. After the project owner publishes its first release, download the `.ipk` from [Releases](https://github.com/Ravboni/race-weekend-viewer-sanitized/releases). Each release includes a `SHA256SUMS` file so you can check the download if desired.
 
 ## 2. Prepare the TV
 
@@ -51,8 +51,8 @@ ares-setup-device
 Install and launch the package, replacing the device name and filename with yours:
 
 ```sh
-ares-install --device myTV ./com.ravboni.f1tv.webos_0.16.24_all.ipk
-ares-launch --device myTV com.ravboni.f1tv.webos
+ares-install --device myTV ./com.ravboni.raceweekend_*.ipk
+ares-launch --device myTV com.ravboni.raceweekend
 ```
 
 LG's [CLI installation](https://webostv.developer.lge.com/develop/tools/cli-installation) and [CLI developer guide](https://webostv.developer.lge.com/develop/tools/cli-dev-guide) cover setup, device registration, package installation, and launching.
@@ -63,14 +63,16 @@ Open Race Weekend Viewer on the television. Follow its pairing instructions usin
 
 ## Update
 
-Download the newer `.ipk` from [Releases](https://github.com/Ravboni/race-weekend-viewer/releases/latest) and install it over the existing app using Dev Manager or `ares-install`. Your local app data should remain on the TV; signing in again may be needed if F1 expires the session.
+Download the newer `.ipk` from [Releases](https://github.com/Ravboni/race-weekend-viewer-sanitized/releases/latest) and install it over the existing app using Dev Manager or `ares-install`. Your local app data should remain on the TV; signing in again may be needed if F1 expires the session.
+
+The first release using the app ID `com.ravboni.raceweekend` is a one-time migration from `com.ravboni.f1tv.webos`. Install and sign in to the new app, verify it works, then remove the old app from Dev Manager or run `ares-install --device myTV --remove com.ravboni.f1tv.webos`. The new app has separate local data, so pair it with your F1 account again. Removing the old app before verifying the new one will remove its locally stored session.
 
 ## Uninstall
 
 Use Dev Manager's installed-apps list to remove **Race Weekend Viewer**, or run:
 
 ```sh
-ares-install --device myTV --remove com.ravboni.f1tv.webos
+ares-install --device myTV --remove com.ravboni.raceweekend
 ```
 
 ## Build and install your own package
@@ -79,8 +81,9 @@ To build from source, use Node.js 20 or newer and npm:
 
 ```sh
 npm install --global @webos-tools/cli
-git clone https://github.com/Ravboni/race-weekend-viewer.git
-cd f1tv-webos
+git clone https://github.com/Ravboni/race-weekend-viewer-sanitized.git
+cd race-weekend-viewer-sanitized
+git switch develop
 ./scripts/package.sh
 ```
 
