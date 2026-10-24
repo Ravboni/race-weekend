@@ -26,7 +26,9 @@ cp -R "${ROOT_DIR}/vendor" "${STAGE_DIR}/"
 
 ares-package --no-minify -o "${DIST_DIR}" "${STAGE_DIR}"
 
-PACKAGE_PATH="${DIST_DIR}/com.ravboni.f1tv.webos_$(node -p "require('${ROOT_DIR}/appinfo.json').version")_all.ipk"
+PACKAGE_ID="$(node -p "require('${ROOT_DIR}/appinfo.json').id")"
+PACKAGE_VERSION="$(node -p "require('${ROOT_DIR}/appinfo.json').version")"
+PACKAGE_PATH="${DIST_DIR}/${PACKAGE_ID}_${PACKAGE_VERSION}_all.ipk"
 if [[ ! -f "${PACKAGE_PATH}" ]]; then
   echo "Expected package was not created: ${PACKAGE_PATH}" >&2
   exit 1

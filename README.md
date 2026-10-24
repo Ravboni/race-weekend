@@ -90,8 +90,8 @@ git switch develop
 The package is created under `dist/`. To install it, register your TV with `ares-setup-device`, then run:
 
 ```sh
-ares-install --device myTV ./dist/com.ravboni.f1tv.webos_0.16.24_all.ipk
-ares-launch --device myTV com.ravboni.f1tv.webos
+ares-install --device myTV ./dist/com.ravboni.raceweekend_*.ipk
+ares-launch --device myTV com.ravboni.raceweekend
 ```
 
 Contributions go to `develop` first. The project owner promotes reviewed changes to `main` and creates version tags; only commits already on `main` can produce a release. See [CONTRIBUTING.md](CONTRIBUTING.md) for the branch and release workflow.
@@ -112,7 +112,9 @@ The launcher mark is a purpose-made, unbranded race-car illustration. The high-r
 
 ## Third-party software and project license
 
-The app bundles dash.js and a QR-code generator. Their license texts are in [`vendor/`](vendor/). Roboto's license is in [`assets/fonts/OFL.txt`](assets/fonts/OFL.txt). No project-wide license has been declared for this repository; the bundled components retain their own licenses.
+The project is licensed under the [MIT License](LICENSE). The app bundles dash.js and a QR-code generator; their license texts are in [`vendor/`](vendor/). Roboto's license is in [`assets/fonts/OFL.txt`](assets/fonts/OFL.txt). These bundled components retain their own licenses.
+
+To report a security issue, follow [`SECURITY.md`](SECURITY.md). Do not post vulnerabilities or account data in public issues.
 
 ## References
 
