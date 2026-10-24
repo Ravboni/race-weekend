@@ -4,10 +4,22 @@ Thanks for helping improve Race Weekend Viewer. The project is an unofficial app
 
 ## Branch and release workflow
 
-- `develop` is the default branch. Start work from `develop` and target contribution pull requests at `develop`.
-- `main` is the promotion and release branch. Only the project owner promotes changes from `develop` to `main`.
+- `develop` is the default integration branch. Start each change from the latest `develop` and use a short-lived working branch.
+- Every change must be submitted as a pull request (PR). Do not commit or push changes directly to `develop` or `main`.
+- Ordinary change PRs target `develop`. After review, they are merged into `develop`.
+- When a set of changes is ready for a release, the project owner opens a separate promotion PR from `develop` to `main`. Only the project owner may open or merge this promotion PR.
 - Only the project owner creates `v*` version tags and publishes releases. The release workflow accepts tags only when their commit is already on `main`.
-- Contributors and coding assistants should not push to `main`, create version tags, or publish releases.
+- Contributors and coding assistants must not push directly to `main`, merge a promotion PR, create version tags, or publish releases.
+
+The normal flow is:
+
+```text
+latest develop
+    └── working branch ── PR ──> develop
+                                  │
+                         owner opens promotion PR
+                                  └───────────────> main ── owner tags and publishes release
+```
 
 ## Before you start
 
@@ -36,16 +48,37 @@ When a change affects the app, verify it on an LG webOS TV when possible. Includ
 
 If you cannot test on a TV, say so in the pull request and describe what you were able to verify. Never claim TV compatibility based only on a desktop browser.
 
-## Open a pull request
+## Branch and PR names
 
-Include:
+- Use a lowercase, kebab-case working branch with a type prefix:
+  - `feat/` for a user-facing capability.
+  - `fix/` for a defect correction.
+  - `docs/` for documentation.
+  - `refactor/` for behavior-preserving code changes.
+  - `chore/` for maintenance and tooling.
+- Name ordinary PRs with a Conventional Commit style title: `<type>(<scope>): <imperative summary>`. Keep the scope short and omit it when it adds no clarity.
+- Use the same types as branch prefixes. Examples: `feat(player): add audio track selection`, `fix(nav): keep focus inside the tab bar`, and `docs: explain TV installation`.
+- Promotion PRs are named `promote: develop -> main (vX.Y.Z)`. The project owner chooses the version and handles any release-specific version changes. A promotion PR must target `main` and use `develop` as its source.
 
-- What changed and why.
-- How you built or checked the change, including whether it was tested on a TV.
-- Screenshots or a short recording for visible UI changes, after checking that they do not expose account information or private stream details.
-- Any known limitations or compatibility impact.
+## Required PR structure
 
-Use a clear title and keep the pull request focused. Do not bump the app version for an ordinary contribution; maintainers will choose the version and publish a release when appropriate.
+GitHub pre-fills this structure for new PRs. Complete every section that applies; write `N/A` with a short reason when a section does not apply.
+
+- **Summary:** What changed and why? Describe user-visible behavior.
+- **Change type:** Feature, fix, documentation, refactor, or maintenance.
+- **Verification:** Commands or checks run and their results. Say clearly whether it was tested on a TV; if so, include the model and webOS version. If not, say so and describe other verification.
+- **UI or playback evidence:** Screenshots or a short recording for visible changes, or the event/feed and selected audio/subtitle details for playback changes. Remove account data and private stream details.
+- **Compatibility and limitations:** Known risks, webOS/device impact, or `N/A` with a reason.
+- **Promotion details:** Ordinary PRs must target `develop`. For a promotion PR, summarize the release contents and target version, confirm the source is `develop` and target is `main`, and list any release checks. Only the project owner completes this section and merges the promotion.
+
+Ordinary change PRs must not bump the app version, create tags, or include release publication steps. The project owner handles those during promotion and release.
+
+## Before you request review
+
+- Keep the PR focused and confirm its target is `develop` (or `main` for an owner-only promotion PR).
+- Check that the PR title follows the naming rules above.
+- Check that all required PR sections are complete.
+- For a substantial change, open an issue first to discuss the approach.
 
 ## Report a bug safely
 
