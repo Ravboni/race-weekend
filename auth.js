@@ -252,7 +252,7 @@
       const params = new URLSearchParams({ contentId: String(contentId), player: "player_bm" });
       if (channelId) params.set("channelId", String(channelId));
       const response = await fetch(`${F1_ORIGIN}/2.0/R/ENG/WEB_DASH/ALL/CONTENT/PLAY?${params}`, {
-        credentials: "include", headers: { ...this.headers(), accept: "application/json" },
+        credentials: "omit", headers: { ...this.headers(), accept: "application/json" },
       });
       if (!response.ok) throw new Error(`F1 TV could not start playback (${response.status}).`);
       const data = await response.json();

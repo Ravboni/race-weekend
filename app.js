@@ -50,7 +50,7 @@ async function apiRequest(path, headers = {}) {
     throw new Error("Unexpected F1 TV API path.");
   }
   const response = await fetch(url.href, {
-    credentials: "include",
+    credentials: "omit",
     headers: { accept: "application/json", ...headers },
   });
   if (!response.ok) throw new Error(`F1 TV returned ${response.status}`);
