@@ -123,7 +123,7 @@
     if (header.alg !== "RS256" || !header.kid || !Number.isFinite(claims.exp) || claims.exp <= now || (claims.nbf && claims.nbf > now)) {
       throw new Error("The F1 TV account session has expired or is invalid.");
     }
-    const jwksResponse = await fetch("https://api.formula1.com/static/jwks.json", { credentials: "omit" });
+    const jwksResponse = await fetch("https://api.formula1.com/static/jwks.json", { credentials: "omit", redirect: "error" });
     if (!jwksResponse.ok) throw new Error("Could not verify the F1 TV account session.");
     const jwks = await jwksResponse.json();
     const jwk = (jwks.keys || []).find((candidate) => candidate.kid === header.kid && candidate.kty === "RSA");

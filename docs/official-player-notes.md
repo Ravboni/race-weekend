@@ -24,7 +24,7 @@ These notes describe requests observed in the signed-in F1 TV TV-web client on a
 ## Sign-in
 
 - The app uses F1's OAuth device authorization flow. The TV shows F1's official pairing code and URL; the user approves the TV on their phone.
-- The app reads the subscription session only from the returned signed OAuth response, verifies the nested subscription token against F1's published JWKS, and checks the account's entitlement and region endpoints.
+- The app reads the subscription session only from the returned signed OAuth response, verifies the nested subscription token against F1's published JWKS, and checks the account's entitlement and region endpoints. The subscription-token payload observed on the C2 has no `iss` claim, so issuer-claim validation cannot be applied to that token format; the JWKS request is pinned to F1's fixed HTTPS URL and rejects redirects.
 - The subscription token is encrypted in IndexedDB using AES-GCM and a non-exportable WebCrypto key. Pairing codes, OAuth access tokens, subscription tokens, entitlement tokens, stream URLs, and DRM material are not written to source files or diagnostics.
 
 ## Boundaries
