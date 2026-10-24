@@ -178,7 +178,7 @@
 
     async beginPairing() {
       this.cancelPairing();
-      const session = { controller: new AbortController(), code: "", userCode: "", nextPoll: 0, interval: 5000, expires: 0, cancelled: false };
+      const session = { controller: new AbortController(), code: "", userCode: "", nextPoll: 0, interval: 5000, expires: 0, cancelled: false, polling: false };
       this.pending = session;
       const data = await deviceRequest("device_authorization", { client_id: DEVICE_CLIENT_ID, scope: "openid f1tv_groups" }, session.controller.signal);
       const url = new URL(data.verification_uri);
@@ -197,8 +197,10 @@
     async pollPairing() {
       const session = this.pending;
       if (!session || session.cancelled) throw new Error("F1 TV sign-in was cancelled.");
+      if (session.polling) return false;
       if (Date.now() >= session.expires) throw new Error("The TV sign-in code expired. Start again to get a new code.");
       if (Date.now() < session.nextPoll) return false;
+      session.polling = true;
       try {
         const data = await deviceRequest("token", {
           client_id: DEVICE_CLIENT_ID,
@@ -218,6 +220,8 @@
           return false;
         }
         throw error;
+      } finally {
+        session.polling = false;
       }
     }
 
