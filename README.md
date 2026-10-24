@@ -24,13 +24,13 @@
 
 | | |
 | --- | --- |
-| Development version | 0.16.25 (no release package published here yet) |
-| Verified device | LG C2, webOS 11.2.0 |
+| Latest release | [v0.16.28](https://github.com/Ravboni/race-weekend/releases/tag/v0.16.28) |
+| Verified devices | LG C2, webOS 11.2.0; LG OLED55E9PLA, webOS 4.5 / firmware 05.50.00 |
 | Install package | `.ipk` from GitHub Releases |
 | TV setup | Rooted or Developer Mode |
 | Subscription | Your own F1 TV subscription |
 
-The C2 is the only tested model. Other LG webOS TVs may work, but have not been verified.
+Both TVs have been checked end to end. On the LG OLED55E9PLA (webOS 4.5, firmware 05.50.00, Chromium 53), the development build loaded the catalogue and artwork, completed F1 phone pairing, and supported remote navigation. Full 2026 United States GP Practice 1 and Practice 2 replays were confirmed with picture and audio at 540p, and the picture quality was reported as good. The next H.264 step, 720p, failed on this TV. The legacy-browser profile therefore targets 540p; other streams, TV models, and firmware versions may behave differently.
 
 ## Install on your TV
 
@@ -74,7 +74,9 @@ The app requests streams allowed by the signed-in account and uses webOS playbac
 
 - A stream may be unavailable because of subscription tier, region, event rights, or F1's response for that item.
 - Replay DRM metadata is not consistent across every archive item. Some replays may not play on a particular TV even when the account can open their details.
-- Playback compatibility depends on the TV model and webOS firmware. Only the LG C2 on webOS 11.2.0 has been checked end to end.
+- Playback compatibility depends on the TV model and webOS firmware. The LG C2 on webOS 11.2.0 and OLED55E9PLA on webOS 4.5 / firmware 05.50.00 have been checked end to end; other models may behave differently.
+- Older webOS browsers use a capability-detected compatibility path for layout, JavaScript APIs, account pairing, and remote navigation. This path was verified on the OLED55E9PLA (Chromium 53).
+- **Verified legacy playback:** On the OLED55E9PLA, full 2026 United States GP Practice 1 and Practice 2 replays both played with picture and audio at 540p; the user confirmed the picture quality was good. The next H.264 rung (720p, about 3.65 Mbps) failed on this TV. The legacy profile starts at about 2 Mbps and caps video at 2.5 Mbps to select the tested 540p rendition. Newer TV profiles remain uncapped.
 - Changes to F1's services may temporarily break sign-in, catalogue browsing, or playback.
 
 ## Build from source
@@ -86,6 +88,7 @@ npm install --global @webos-tools/cli
 git clone https://github.com/Ravboni/race-weekend.git
 cd race-weekend
 git switch develop
+npm ci --ignore-scripts
 ./scripts/package.sh
 ```
 

@@ -84,6 +84,7 @@ npm install --global @webos-tools/cli
 git clone https://github.com/Ravboni/race-weekend.git
 cd race-weekend
 git switch develop
+npm ci --ignore-scripts
 ./scripts/package.sh
 ```
 

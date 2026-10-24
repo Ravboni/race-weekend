@@ -1,0 +1,125 @@
+/* Layout fallbacks for older webOS Chromium engines (for example Chromium 53). */
+.legacy-webos .topbar {
+  position: relative;
+  padding: 48px 96px 0;
+}
+.legacy-webos .primary-nav {
+  position: absolute;
+  top: 48px;
+  left: 50%;
+  display: flex;
+  width: auto;
+  max-width: none;
+  flex: none;
+  justify-content: center;
+  gap: 0;
+  transform: translateX(-50%);
+}
+.legacy-webos .nav-button {
+  height: 64px;
+  padding: 0 16px;
+  margin: 0 8px;
+}
+.legacy-webos .profile-chip { margin-left: auto; }
+
+.legacy-webos .hero {
+  width: calc(100vw - 232px);
+  max-width: 1688px;
+  height: 632px;
+  min-height: 632px;
+  margin: 56px auto 0;
+}
+.legacy-webos .hero-backdrop {
+  z-index: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+.legacy-webos .hero-backdrop::after,
+.legacy-webos .hero::after {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+.legacy-webos .hero-copy {
+  position: relative;
+  z-index: 1;
+  width: 640px;
+  max-width: calc(100% - 80px);
+}
+.legacy-webos .hero-title { font-size: 76px; }
+.legacy-webos .hero-indicators { right: 64px; bottom: 64px; }
+
+.legacy-webos .content-rails {
+  padding-right: 116px;
+  padding-left: 116px;
+}
+.legacy-webos .content-section { margin-top: 40px; }
+.legacy-webos .section-header { margin-bottom: 16px; }
+.legacy-webos .content-rail {
+  gap: 0;
+  margin-right: -16px;
+  margin-left: -16px;
+  padding: 24px 16px 30px;
+}
+.legacy-webos .content-card {
+  align-items: stretch;
+  flex: 0 0 392px;
+  width: 392px;
+  min-width: 392px;
+  margin-right: 40px;
+}
+.legacy-webos .content-card-image {
+  align-self: stretch;
+  width: 392px;
+  height: 221px;
+  aspect-ratio: auto;
+}
+.legacy-webos .content-card-image::after,
+.legacy-webos .detail-backdrop::after {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+
+.legacy-webos .search-results-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  margin-right: -12px;
+}
+.legacy-webos .search-results-grid .content-card {
+  flex: 0 0 24%;
+  width: 24%;
+  min-width: 0;
+  margin: 0 1% 32px 0;
+}
+.legacy-webos .search-results-grid .content-card-image { height: 221px; }
+
+.legacy-webos .detail-backdrop,
+.legacy-webos .player-view,
+.legacy-webos .player-video,
+.legacy-webos .player-chrome,
+.legacy-webos .sign-in-dialog {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+.legacy-webos .player-error { top: 20%; right: 15%; bottom: 20%; left: 15%; }
+.legacy-webos .detail-content { width: 72vw; max-width: 1100px; }
+.legacy-webos .channel-options { max-width: 100%; }
+.legacy-webos .player-options { width: 42vw; max-width: 768px; }
+.legacy-webos .player-timeline input { width: 68vw; max-width: 960px; }
+.legacy-webos .sign-in-card { width: 80vw; max-width: 760px; }
+.legacy-webos .sign-out-card { width: 80vw; max-width: 820px; }
+
+/* Older flexbox implementations do not support gap, so preserve spacing with margins. */
+.legacy-webos .hero-actions .button + .button,
+.legacy-webos .detail-actions .button + .button,
+.legacy-webos .player-controls .button + .button { margin-left: 24px; }
+.legacy-webos .channel-option + .channel-option { margin-left: 16px; }
+.legacy-webos .sign-out-actions .button + .button { margin-left: 32px; }
