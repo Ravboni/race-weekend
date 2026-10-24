@@ -1,10 +1,10 @@
-# Install Race Weekend Viewer (F1 TV for webOS)
+# Install Race Weekend (F1 TV for webOS)
 
-Race Weekend Viewer is built to let you use F1 TV on an LG webOS television. This guide installs the prebuilt app package. You need an LG webOS TV on the same local network as the computer used to install it.
+Race Weekend is built to let you use F1 TV on an LG webOS television. This guide installs the prebuilt app package. You need an LG webOS TV on the same local network as the computer used to install it.
 
 ## 1. Download the app
 
-This sanitized repository does not have a release package yet. After the project owner publishes its first release, download the `.ipk` from [Releases](https://github.com/Ravboni/race-weekend-viewer-sanitized/releases). Each release includes a `SHA256SUMS` file so you can check the download if desired.
+Download the latest `.ipk` from [Releases](https://github.com/Ravboni/race-weekend/releases). Each release includes a `SHA256SUMS` file so you can check the download if desired.
 
 ## 2. Prepare the TV
 
@@ -30,7 +30,7 @@ Developer Mode is time-limited. The Homebrew guide currently documents a 1,000-h
    - For a rooted TV, use the rooted-device connection method and the TV's IP address.
    - For Developer Mode, use the Developer Mode connection method and the developer key from the TV.
 3. Choose the option to install an app, select the downloaded `.ipk`, and wait for installation to finish.
-4. Launch **Race Weekend Viewer** from the TV launcher.
+4. Launch **Race Weekend** from the TV launcher.
 
 Dev Manager's [project page](https://github.com/webosbrew/dev-manager-desktop) has the latest connection instructions and troubleshooting details.
 
@@ -59,17 +59,17 @@ LG's [CLI installation](https://webostv.developer.lge.com/develop/tools/cli-inst
 
 ## Sign in
 
-Open Race Weekend Viewer on the television. Follow its pairing instructions using a phone or computer signed in to the F1 account that has the required subscription. The app can only show events and streams available to that account and region.
+Open Race Weekend on the television. Follow its pairing instructions using a phone or computer signed in to the F1 account that has the required subscription. The app can only show events and streams available to that account and region.
 
 ## Update
 
-Download the newer `.ipk` from [Releases](https://github.com/Ravboni/race-weekend-viewer-sanitized/releases/latest) and install it over the existing app using Dev Manager or `ares-install`. Your local app data should remain on the TV; signing in again may be needed if F1 expires the session.
+Download the newer `.ipk` from [Releases](https://github.com/Ravboni/race-weekend/releases/latest) and install it over the existing app using Dev Manager or `ares-install`. Your local app data should remain on the TV; signing in again may be needed if F1 expires the session.
 
 The first release using the app ID `com.ravboni.raceweekend` is a one-time migration from `com.ravboni.f1tv.webos`. Install and sign in to the new app, verify it works, then remove the old app from Dev Manager or run `ares-install --device myTV --remove com.ravboni.f1tv.webos`. The new app has separate local data, so pair it with your F1 account again. Removing the old app before verifying the new one will remove its locally stored session.
 
 ## Uninstall
 
-Use Dev Manager's installed-apps list to remove **Race Weekend Viewer**, or run:
+Use Dev Manager's installed-apps list to remove **Race Weekend**, or run:
 
 ```sh
 ares-install --device myTV --remove com.ravboni.raceweekend
@@ -81,8 +81,8 @@ To build from source, use Node.js 20 or newer and npm:
 
 ```sh
 npm install --global @webos-tools/cli
-git clone https://github.com/Ravboni/race-weekend-viewer-sanitized.git
-cd race-weekend-viewer-sanitized
+git clone https://github.com/Ravboni/race-weekend.git
+cd race-weekend
 git switch develop
 ./scripts/package.sh
 ```

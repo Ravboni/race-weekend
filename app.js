@@ -372,7 +372,7 @@ function renderPage(pageData, title) {
     const rail = renderRail(container);
     if (rail) rails.append(rail);
   });
-  document.title = `${title} · Race Weekend Viewer`;
+  document.title = `${title} · Race Weekend`;
 }
 
 async function loadPage(uri, title, activeButton) {

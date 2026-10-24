@@ -1,6 +1,6 @@
 # Security policy
 
-Race Weekend Viewer is an unofficial client for F1 TV. Please report security
+Race Weekend is an unofficial client for F1 TV. Please report security
 issues privately; do not disclose vulnerabilities, account information,
 pairing codes, access tokens, signed playback URLs, DRM challenges, or license
 responses in public issues or discussions.
