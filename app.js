@@ -1,3 +1,24 @@
+// The webOS 4.x browser on some rooted LG TVs is based on Chromium 53 and
+// predates Element.append() and Element.replaceChildren(). Keep the UI's DOM
+// updates working there without changing behavior on newer engines.
+(function installLegacyDomCompatibility() {
+  if (typeof Element === "undefined") return;
+  if (!Element.prototype.append) {
+    Element.prototype.append = function append() {
+      for (var index = 0; index < arguments.length; index += 1) {
+        var child = arguments[index];
+        this.appendChild(child instanceof Node ? child : document.createTextNode(String(child)));
+      }
+    };
+  }
+  if (!Element.prototype.replaceChildren) {
+    Element.prototype.replaceChildren = function replaceChildren() {
+      while (this.firstChild) this.removeChild(this.firstChild);
+      Element.prototype.append.apply(this, arguments);
+    };
+  }
+})();
+
 const API_ORIGIN = "https://f1tv.formula1.com";
 const API = {
   menu: "/2.0/R/ENG/WEB_DASH/ALL/MENU/PRO/2",
@@ -447,7 +468,8 @@ async function submitSearch(event) {
   const location = state.session.location;
   const login = state.session.signedIn ? "R" : "A";
   const tail = `${encodeURIComponent(location.entitlement)}/${Number(location.groupId)}`;
-  const params = new URLSearchParams({ search: query });
+  const params = new URLSearchParams();
+  params.append("search", query);
   try {
     const data = await apiRequest(`/2.0/${login}/ENG/WEB_DASH/ALL/PAGE/5234/${tail}?${params}`, state.session.headers());
     const items = searchItems(data);
@@ -1206,6 +1228,18 @@ function moveFocus(event, key = event.key) {
   // geometric focus search wrap into content when the user presses Right.
   if (current.id === "account-button" && key === "ArrowRight") {
     event.preventDefault();
+    return true;
+  }
+  if ((key === "ArrowLeft" || key === "ArrowRight") && current.matches?.(".content-card")) {
+    const rail = current.closest(".content-rail");
+    const cards = rail ? [...rail.querySelectorAll(".content-card")] : [];
+    const index = cards.indexOf(current);
+    const next = cards[index + (key === "ArrowRight" ? 1 : -1)];
+    event.preventDefault();
+    if (next) {
+      next.focus();
+      revealFocusTarget(next);
+    }
     return true;
   }
   if (current.matches?.("input:not([type='range']), textarea, [contenteditable='true']")

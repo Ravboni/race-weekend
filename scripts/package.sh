@@ -14,6 +14,8 @@ cp "${ROOT_DIR}/appinfo.json" \
    "${ROOT_DIR}/index.html" \
    "${ROOT_DIR}/app.js" \
    "${ROOT_DIR}/auth.js" \
+   "${ROOT_DIR}/compat.js" \
+   "${ROOT_DIR}/legacy-webos.css" \
    "${ROOT_DIR}/styles.css" \
    "${ROOT_DIR}/icon.png" \
    "${ROOT_DIR}/largeIcon.png" \
@@ -23,6 +25,12 @@ cp "${ROOT_DIR}/appinfo.json" \
 mkdir -p "${STAGE_DIR}/assets"
 cp -R "${ROOT_DIR}/assets/fonts" "${STAGE_DIR}/assets/"
 cp -R "${ROOT_DIR}/vendor" "${STAGE_DIR}/"
+
+if [[ ! -d "${ROOT_DIR}/node_modules/@babel/core" ]]; then
+  echo "Build dependencies are missing. Run 'npm ci --ignore-scripts' first." >&2
+  exit 1
+fi
+node "${ROOT_DIR}/scripts/transpile.js" "${STAGE_DIR}"
 
 ares-package --no-minify -o "${DIST_DIR}" "${STAGE_DIR}"
 
