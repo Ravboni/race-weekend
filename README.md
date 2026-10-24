@@ -30,7 +30,7 @@
 | TV setup | Rooted or Developer Mode |
 | Subscription | Your own F1 TV subscription |
 
-Both TVs have been checked end to end. On the OLED55E9PLA, the development build loaded the catalogue and artwork, completed F1 phone pairing, supported remote navigation, and played the 2026 United States GP Practice 2 Highlights with picture and audio. Other models and firmware versions may behave differently.
+Both TVs have been checked end to end. On the OLED55E9PLA, the development build loaded the catalogue and artwork, completed F1 phone pairing, supported remote navigation, and played the full 2026 United States GP Practice 2 replay with picture and audio. Older webOS TVs use a conservative video bitrate cap for decoder compatibility. Other models and firmware versions may behave differently.
 
 ## Install on your TV
 
@@ -76,6 +76,7 @@ The app requests streams allowed by the signed-in account and uses webOS playbac
 - Replay DRM metadata is not consistent across every archive item. Some replays may not play on a particular TV even when the account can open their details.
 - Playback compatibility depends on the TV model and webOS firmware. The LG C2 on webOS 11.2.0 and OLED55E9PLA on webOS 4.5 / firmware 05.50.00 have been checked end to end; other models may behave differently.
 - Older webOS browsers use a capability-detected compatibility path for layout, JavaScript APIs, account pairing, and remote navigation. This path was verified on the OLED55E9PLA (Chromium 53).
+- The legacy-browser playback path caps video at 2 Mbps. This avoids decoder failures seen on full-session replays on the OLED55E9PLA while leaving newer TV profiles uncapped.
 - Changes to F1's services may temporarily break sign-in, catalogue browsing, or playback.
 
 ## Build from source

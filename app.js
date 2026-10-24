@@ -971,7 +971,13 @@ async function startPlayback(item) {
     if (!window.dashjs?.MediaPlayer) throw new Error("The TV player engine did not load.");
     const player = window.dashjs.MediaPlayer().create();
     state.dashPlayer = player;
-    player.updateSettings({ debug: { logLevel: 0 }, streaming: { abr: { limitBitrateByPortal: false } } });
+    const abrSettings = { limitBitrateByPortal: false };
+    // Older webOS decoders can fail on high-bitrate F1 replay renditions even
+    // when Widevine setup succeeds. Keep those TVs on a conservative rendition.
+    if (document.documentElement.classList.contains("legacy-webos")) {
+      abrSettings.maxBitrate = { audio: -1, video: 2000 };
+    }
+    player.updateSettings({ debug: { logLevel: 0 }, streaming: { abr: abrSettings } });
     if (stream.drmType === "widevine") {
       player.setProtectionData({
         "com.widevine.alpha": {
