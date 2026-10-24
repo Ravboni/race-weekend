@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/brand/race-weekend-viewer-car-icon.png" alt="Red open-wheel race car app icon on a charcoal background" width="160">
+  <img src="assets/brand/race-weekend-viewer-logo.png" alt="Black and red Race Weekend Viewer RW wordmark on a white tile" width="160">
 </p>
 
 <h1 align="center">Race Weekend Viewer</h1>
@@ -108,9 +108,11 @@ Pairing codes, account tokens, signed stream URLs, DRM challenges, and license r
 
 When reporting a problem, include the TV model, webOS version, app version, event or feed type, and the visible error message. See [the implementation notes](docs/official-player-notes.md) for non-secret observations about the sign-in, catalogue, and playback flows.
 
-## App icon
+## Brand assets
 
-The launcher mark is a purpose-made, unbranded race-car illustration. The high-resolution source artwork is [`assets/brand/race-weekend-viewer-car-icon-master.png`](assets/brand/race-weekend-viewer-car-icon-master.png), and [`assets/brand/race-weekend-viewer-car-icon.png`](assets/brand/race-weekend-viewer-car-icon.png) is its 512px preview. The app packages separate 80×80 small and 130×130 large icons as required by webOS. The design uses a centered, high-contrast silhouette with padding so it remains recognizable at launcher size. It follows the [Android TV safe-area and simplicity guidance](https://developer.android.com/design/ui/tv/guides/system/tv-app-icon-guidelines) and the [LG webOS app icon requirements](https://webostv.developer.lge.com/develop/references/appinfo-json).
+The app uses the supplied Race Weekend Viewer RW wordmark throughout its branding. The mark is tightly cropped from the transparent original so it remains large and legible in small graphics. The square launcher tile is [`assets/brand/race-weekend-viewer-logo.png`](assets/brand/race-weekend-viewer-logo.png); the original cropped transparent artwork is [`assets/brand/race-weekend-viewer-logo-master.png`](assets/brand/race-weekend-viewer-logo-master.png). The webOS package uses 80×80 and 130×130 versions of this mark in `icon.png` and `largeIcon.png`.
+
+The repository banner is [`assets/brand/race-weekend-viewer-social-preview.png`](assets/brand/race-weekend-viewer-social-preview.png) (1280×640). It places the exact supplied wordmark on a light panel for contrast against a dark racing-inspired background. The logo assets retain the source lettering and proportions; only the empty transparent margins are cropped for the app-sized files.
 
 ## Third-party software and project license
 
