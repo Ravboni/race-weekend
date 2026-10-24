@@ -38,6 +38,14 @@ The C2 is the only tested model. Other LG webOS TVs may work, but have not been 
 
 The [installation guide](docs/INSTALL.md) explains rooted TV and Developer Mode setup, install and update steps, CLI commands, and uninstalling. The package includes a SHA-256 checksum.
 
+Public releases built after the provenance-enabled workflow reaches `main` include a GitHub Actions build attestation for the `.ipk`. GitHub currently limits artifact attestations to public repositories on Free, Pro, and Team plans; the workflow skips attestation while this repository is private. To verify a downloaded package with [GitHub CLI](https://cli.github.com/), run:
+
+```sh
+gh attestation verify ./path/to/downloaded-package.ipk --repo Ravboni/race-weekend-viewer
+```
+
+The attestation proves which repository workflow produced the package and binds that claim to its digest. It does not guarantee that the source code itself is free of defects.
+
 ## What it can do
 
 - Browse F1 TV home, live events, archive, search results, and video details.
