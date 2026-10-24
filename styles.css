@@ -26,7 +26,8 @@ button { color: inherit; font: inherit; }
 .profile-chip { display: flex; flex: 0 0 auto; align-items: center; gap: 10px; padding: 5px; border: 0; border-radius: 20px; background: transparent; color: #c4c5cc; cursor: pointer; font-size: 12px; }
 .profile-avatar { display: inline-flex; width: 34px; height: 34px; align-items: center; justify-content: center; border: 1px solid #45464d; border-radius: 50%; background: linear-gradient(135deg,#383941,#17181d); color: #fff; font-size: 13px; font-weight: 700; }
 
-.main-content { position: relative; flex: 1; min-height: 0; overflow: auto; scrollbar-color: #42434a transparent; scrollbar-width: thin; }
+.main-content { position: relative; flex: 1; min-height: 0; overflow: auto; scrollbar-width: none; }
+.main-content::-webkit-scrollbar { display: none; }
 .home-view { padding-bottom: 60px; }
 .hero { position: relative; display: flex; height: min(630px, 61vh); min-height: 480px; align-items: center; overflow: hidden; background-color: #15161b; background-position: center 38%; background-size: cover; }
 .hero::after { position: absolute; inset: 0; background: linear-gradient(0deg, #090a0e 0%, rgba(9,10,14,.1) 25%, transparent 100%); pointer-events: none; content: ""; }
