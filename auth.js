@@ -3,7 +3,7 @@
 
   const ID_ORIGIN = "https://id.formula1.com/as/";
   const F1_ORIGIN = "https://f1tv.formula1.com";
-  const MANIFEST_HOSTS = new Set(["f1prodlive.akamaized.net", "f1tv.formula1.com"]);
+  const MANIFEST_HOSTS = new Set(["f1prodlive.akamaized.net", "f1tv.formula1.com", "ott-video-fer-cf.formula1.com"]);
   const LICENSE_HOSTS = new Set(["f1tv.formula1.com"]);
   const DEVICE_CLIENT_ID = "13c21153-f2f3-484b-a642-f2a2927e55de";
   const STORAGE_NAME = "f1tv-webos-session-v1";
