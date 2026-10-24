@@ -90,7 +90,11 @@ Contributions go to `develop` first. The project owner promotes reviewed changes
 
 ## Account data and safe bug reports
 
-The app encrypts its session on the TV in IndexedDB with AES-GCM and a non-exportable WebCrypto key. Pairing codes, account tokens, signed stream URLs, DRM challenges, and license responses must remain private. Never paste them into an issue, screenshot, log, or commit.
+The app encrypts its saved session token with AES-GCM in IndexedDB. The non-exportable WebCrypto key is stored in that same database, so this is protection against casual file access, not secure or hardware-backed storage. It does not protect against code running in the app's origin or someone with root access to the TV.
+
+Logging out clears the session stored on the TV; it does not revoke the token at F1, which remains valid until it expires. If the TV is lost or sold, remove it from your F1 account: sign in on the F1 TV website, open **Manage Account → My Subscriptions → Devices**, then edit the device list and remove the TV. See [F1's device management instructions](https://f1help.formula1.com/article/Managing-your-F1-TV-account).
+
+Pairing codes, account tokens, signed stream URLs, DRM challenges, and license responses must remain private. Never paste them into an issue, screenshot, log, or commit.
 
 When reporting a problem, include the TV model, webOS version, app version, event or feed type, and the visible error message. See [the implementation notes](docs/official-player-notes.md) for non-secret observations about the sign-in, catalogue, and playback flows.
 
