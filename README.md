@@ -1,13 +1,13 @@
 <p align="center">
-  <img src="assets/brand/race-weekend-viewer-logo.png" alt="Black and red Race Weekend Viewer RW wordmark on a white tile" width="160">
+  <img src="assets/brand/race-weekend-logo.png" alt="Black and red Race Weekend RW wordmark on a white tile" width="160">
 </p>
 
-<h1 align="center">Race Weekend Viewer</h1>
+<h1 align="center">Race Weekend</h1>
 
 <p align="center">An unofficial, remote-friendly way to watch F1 TV on LG webOS.</p>
 
 <p align="center">
-  <a href="https://github.com/Ravboni/race-weekend-viewer-sanitized/releases">Releases</a>
+  <a href="https://github.com/Ravboni/race-weekend/releases">Releases</a>
   ·
   <a href="docs/INSTALL.md">Installation guide</a>
   ·
@@ -16,7 +16,7 @@
   <a href="docs/PR_HISTORY.md">PR history archive</a>
 </p>
 
-**Race Weekend Viewer is built to bring F1 TV to LG webOS televisions.** It lets you sign in with your own F1 TV account, browse F1 TV's catalogue, and watch the streams available to your subscription using the television's web runtime and media capabilities. It is a webOS app in its own right, not the Android TV app running through an emulator.
+**Race Weekend is built to bring F1 TV to LG webOS televisions.** It lets you sign in with your own F1 TV account, browse F1 TV's catalogue, and watch the streams available to your subscription using the television's web runtime and media capabilities. It is a webOS app in its own right, not the Android TV app running through an emulator.
 
 > **Unofficial and experimental.** This project is not affiliated with or endorsed by Formula 1, F1 TV, or Liberty Media. It requires an F1 TV account with the appropriate subscription. F1 may change its services, API, account flow, regional availability, or DRM requirements at any time.
 
@@ -34,16 +34,16 @@ The C2 is the only tested model. Other LG webOS TVs may work, but have not been 
 
 ## Install on your TV
 
-1. Download the `.ipk` from [Releases](https://github.com/Ravboni/race-weekend-viewer-sanitized/releases/latest) after the project owner publishes the first release in this repository.
+1. Download the latest `.ipk` from [Releases](https://github.com/Ravboni/race-weekend/releases/latest).
 2. Install it using [webOS Dev Manager](https://github.com/webosbrew/dev-manager-desktop/releases/latest) or LG's webOS CLI.
-3. Open **Race Weekend Viewer** on the TV and follow the on-screen phone-pairing steps for your F1 TV account.
+3. Open **Race Weekend** on the TV and follow the on-screen phone-pairing steps for your F1 TV account.
 
-The [installation guide](docs/INSTALL.md) explains rooted TV and Developer Mode setup, install and update steps, CLI commands, and uninstalling. This clean repository does not copy old release assets; the project owner will publish new packages here after promoting changes to `main`.
+The [installation guide](docs/INSTALL.md) explains rooted TV and Developer Mode setup, install and update steps, CLI commands, and uninstalling. New packages are published here after changes are promoted to `main`.
 
 Public releases built after the provenance-enabled workflow reaches `main` include a GitHub Actions build attestation for the `.ipk`. GitHub currently limits artifact attestations to public repositories on Free, Pro, and Team plans; the workflow skips attestation while this repository is private. To verify a downloaded package with [GitHub CLI](https://cli.github.com/), run:
 
 ```sh
-gh attestation verify ./path/to/downloaded-package.ipk --repo Ravboni/race-weekend-viewer-sanitized
+gh attestation verify ./path/to/downloaded-package.ipk --repo Ravboni/race-weekend
 ```
 
 The attestation proves which repository workflow produced the package and binds that claim to its digest. It does not guarantee that the source code itself is free of defects.
@@ -83,8 +83,8 @@ Requirements: Node.js 20 or newer, npm, and the [webOS CLI](https://webostv.deve
 
 ```sh
 npm install --global @webos-tools/cli
-git clone https://github.com/Ravboni/race-weekend-viewer-sanitized.git
-cd race-weekend-viewer-sanitized
+git clone https://github.com/Ravboni/race-weekend.git
+cd race-weekend
 git switch develop
 ./scripts/package.sh
 ```
@@ -110,9 +110,9 @@ When reporting a problem, include the TV model, webOS version, app version, even
 
 ## Brand assets
 
-The app uses the supplied Race Weekend Viewer RW wordmark throughout its branding. The mark is tightly cropped from the transparent original so it remains large and legible in small graphics. The square launcher tile is [`assets/brand/race-weekend-viewer-logo.png`](assets/brand/race-weekend-viewer-logo.png); the original cropped transparent artwork is [`assets/brand/race-weekend-viewer-logo-master.png`](assets/brand/race-weekend-viewer-logo-master.png). The webOS package uses 80×80 and 130×130 versions of this mark in `icon.png` and `largeIcon.png`.
+The app uses the supplied Race Weekend RW wordmark throughout its branding. The mark is tightly cropped from the transparent original so it remains large and legible in small graphics. The square launcher tile is [`assets/brand/race-weekend-logo.png`](assets/brand/race-weekend-logo.png); the original cropped transparent artwork is [`assets/brand/race-weekend-logo-master.png`](assets/brand/race-weekend-logo-master.png). The webOS package uses 80×80 and 130×130 versions of this mark in `icon.png` and `largeIcon.png`.
 
-The repository banner is [`assets/brand/race-weekend-viewer-social-preview.jpg`](assets/brand/race-weekend-viewer-social-preview.jpg) (1280×640). It places the exact supplied wordmark on a light panel for contrast against a dark racing-inspired background. The logo assets retain the source lettering and proportions; only the empty transparent margins are cropped for the app-sized files.
+The repository banner is [`assets/brand/race-weekend-social-preview.jpg`](assets/brand/race-weekend-social-preview.jpg) (1280×640). It places the exact supplied wordmark on a light panel for contrast against a dark racing-inspired background. The logo assets retain the source lettering and proportions; only the empty transparent margins are cropped for the app-sized files.
 
 ## Third-party software and project license
 

@@ -1,6 +1,6 @@
-# Contributing to Race Weekend Viewer
+# Contributing to Race Weekend
 
-Thanks for helping improve Race Weekend Viewer. The project is an unofficial app built to bring F1 TV to LG webOS televisions. Contributions should keep the app useful with a TV remote and compatible with the webOS browser and media runtime.
+Thanks for helping improve Race Weekend. The project is an unofficial app built to bring F1 TV to LG webOS televisions. Contributions should keep the app useful with a TV remote and compatible with the webOS browser and media runtime.
 
 ## Branch and release workflow
 
@@ -34,8 +34,8 @@ You need Node.js 20 or newer, npm, and the LG [webOS CLI](https://webostv.develo
 
 ```sh
 npm install --global @webos-tools/cli
-git clone https://github.com/Ravboni/race-weekend-viewer-sanitized.git
-cd race-weekend-viewer-sanitized
+git clone https://github.com/Ravboni/race-weekend.git
+cd race-weekend
 git switch develop
 ./scripts/package.sh
 ```

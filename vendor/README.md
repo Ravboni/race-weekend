@@ -1,6 +1,6 @@
 # Bundled libraries
 
-This directory contains the browser libraries bundled with Race Weekend Viewer. Keep each library's license file with its source when updating it.
+This directory contains the browser libraries bundled with Race Weekend. Keep each library's license file with its source when updating it.
 
 | Library | Version | License | Source | Used for |
 | --- | --- | --- | --- | --- |
