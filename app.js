@@ -162,7 +162,7 @@ function focusDefault(name) {
       || document.querySelector(".content-rail .focusable")
       || document.querySelector(".nav-button"),
     search: () => document.getElementById("search-input"),
-    detail: () => document.getElementById("back-button"),
+    detail: () => document.getElementById("play-button") || document.getElementById("back-button"),
     player: () => document.getElementById("player-back"),
     error: () => document.getElementById("retry-button"),
   };
@@ -464,6 +464,7 @@ async function loadHome() {
 }
 
 function showDetail(item, fullMetadata) {
+  const enteringDetail = state.currentView !== "detail";
   const metadata = fullMetadata || item.metadata || {};
   const eventInfo = metadata.emfAttributes || {};
   const title = metadata.titleBrief || metadata.title || "F1 TV";
@@ -511,7 +512,7 @@ function showDetail(item, fullMetadata) {
     picker.hidden = true;
   }
   setView("detail");
-  document.getElementById("back-button").focus();
+  if (enteringDetail) document.getElementById("play-button").focus();
 }
 
 function playerOption(label, selected, onClick, disabled = false) {

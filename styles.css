@@ -1149,3 +1149,10 @@ button:focus, input:focus, select:focus, textarea:focus { outline: none; }
 }
 .topbar { margin-bottom: 40px; } /* fixed 20dp breathing room below the tabs */
 .hero { margin-top: 16px; } /* preserve its existing position on initial load */
+.back-button:focus {
+  border-radius: 999px;
+  background: rgba(255,255,255,.12);
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(0,0,0,.38);
+  transform: scale(1.035);
+}
