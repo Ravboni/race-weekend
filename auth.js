@@ -3,15 +3,17 @@
 
   const ID_ORIGIN = "https://id.formula1.com/as/";
   const F1_ORIGIN = "https://f1tv.formula1.com";
-  const MANIFEST_HOSTS = new Set(["f1prodlive.akamaized.net", "f1tv.formula1.com", "ott-video-fer-cf.formula1.com"]);
+  const MANIFEST_HOSTS = new Set(["f1prodlive.akamaized.net"]);
   const LICENSE_HOSTS = new Set(["f1tv.formula1.com"]);
   const DEVICE_CLIENT_ID = "13c21153-f2f3-484b-a642-f2a2927e55de";
   const STORAGE_NAME = "f1tv-webos-session-v1";
 
-  function trustedPlaybackUrl(value, allowedHosts) {
+  function trustedPlaybackUrl(value, allowedHosts, allowFormula1Hosts = false) {
     try {
       const url = new URL(value);
-      if (url.protocol !== "https:" || url.port || url.username || url.password || !allowedHosts.has(url.hostname)) return "";
+      const trustedHost = allowedHosts.has(url.hostname)
+        || (allowFormula1Hosts && (url.hostname === "formula1.com" || url.hostname.endsWith(".formula1.com")));
+      if (url.protocol !== "https:" || url.port || url.username || url.password || !trustedHost) return "";
       return url.href;
     } catch (_error) {
       return "";
@@ -256,7 +258,7 @@
         ? result
         : [result, ...(Array.isArray(result.streams) ? result.streams : [])];
       const dashCandidates = candidates.filter((candidate) => {
-        const manifest = trustedPlaybackUrl(candidate?.url || candidate?.manifestUrl, MANIFEST_HOSTS);
+        const manifest = trustedPlaybackUrl(candidate?.url || candidate?.manifestUrl, MANIFEST_HOSTS, true);
         return manifest && /DASH/i.test(candidate.streamType || "");
       });
       const licenseAddress = (candidate) => candidate.laURL || candidate.laUrl || candidate.licenseUrl || "";
@@ -274,7 +276,7 @@
       });
       const stream = widevineStream || clearDashStream;
       if (!stream) throw new Error("F1 TV did not provide a playable DASH stream for this programme.");
-      const manifest = trustedPlaybackUrl(stream.url || stream.manifestUrl, MANIFEST_HOSTS);
+      const manifest = trustedPlaybackUrl(stream.url || stream.manifestUrl, MANIFEST_HOSTS, true);
       const licenseUrl = widevineStream ? trustedPlaybackUrl(licenseAddress(stream), LICENSE_HOSTS) : "";
       const licenseHeaders = {};
       const entitlementToken = stream.entitlementToken || result.entitlementToken || this.entitlement;
