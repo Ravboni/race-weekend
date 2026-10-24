@@ -34,8 +34,8 @@ You need Node.js 20 or newer, npm, and the LG [webOS CLI](https://webostv.develo
 
 ```sh
 npm install --global @webos-tools/cli
-git clone https://github.com/Ravboni/race-weekend-viewer.git
-cd race-weekend-viewer
+git clone https://github.com/Ravboni/race-weekend-viewer-sanitized.git
+cd race-weekend-viewer-sanitized
 git switch develop
 ./scripts/package.sh
 ```

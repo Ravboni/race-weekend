@@ -7,11 +7,13 @@
 <p align="center">An unofficial, remote-friendly way to watch F1 TV on LG webOS.</p>
 
 <p align="center">
-  <a href="https://github.com/Ravboni/race-weekend-viewer/releases/latest">Download the latest release</a>
+  <a href="https://github.com/Ravboni/race-weekend-viewer-sanitized/releases">Releases</a>
   ·
   <a href="docs/INSTALL.md">Installation guide</a>
   ·
   <a href="CONTRIBUTING.md">Contributing</a>
+  ·
+  <a href="docs/PR_HISTORY.md">PR history archive</a>
 </p>
 
 **Race Weekend Viewer is built to bring F1 TV to LG webOS televisions.** It lets you sign in with your own F1 TV account, browse F1 TV's catalogue, and watch the streams available to your subscription using the television's web runtime and media capabilities. It is a webOS app in its own right, not the Android TV app running through an emulator.
@@ -22,7 +24,7 @@
 
 | | |
 | --- | --- |
-| Current release | [0.16.24](https://github.com/Ravboni/race-weekend-viewer/releases/tag/v0.16.24) |
+| Development version | 0.16.25 (no release package published here yet) |
 | Verified device | LG C2, webOS 11.2.0 |
 | Install package | `.ipk` from GitHub Releases |
 | TV setup | Rooted or Developer Mode |
@@ -32,16 +34,16 @@ The C2 is the only tested model. Other LG webOS TVs may work, but have not been 
 
 ## Install on your TV
 
-1. Download the `.ipk` from [the latest release](https://github.com/Ravboni/race-weekend-viewer/releases/latest).
+1. Download the `.ipk` from [Releases](https://github.com/Ravboni/race-weekend-viewer-sanitized/releases/latest) after the project owner publishes the first release in this repository.
 2. Install it using [webOS Dev Manager](https://github.com/webosbrew/dev-manager-desktop/releases/latest) or LG's webOS CLI.
 3. Open **Race Weekend Viewer** on the TV and follow the on-screen phone-pairing steps for your F1 TV account.
 
-The [installation guide](docs/INSTALL.md) explains rooted TV and Developer Mode setup, install and update steps, CLI commands, and uninstalling. The package includes a SHA-256 checksum.
+The [installation guide](docs/INSTALL.md) explains rooted TV and Developer Mode setup, install and update steps, CLI commands, and uninstalling. This clean repository does not copy old release assets; the project owner will publish new packages here after promoting changes to `main`.
 
 Public releases built after the provenance-enabled workflow reaches `main` include a GitHub Actions build attestation for the `.ipk`. GitHub currently limits artifact attestations to public repositories on Free, Pro, and Team plans; the workflow skips attestation while this repository is private. To verify a downloaded package with [GitHub CLI](https://cli.github.com/), run:
 
 ```sh
-gh attestation verify ./path/to/downloaded-package.ipk --repo Ravboni/race-weekend-viewer
+gh attestation verify ./path/to/downloaded-package.ipk --repo Ravboni/race-weekend-viewer-sanitized
 ```
 
 The attestation proves which repository workflow produced the package and binds that claim to its digest. It does not guarantee that the source code itself is free of defects.
@@ -81,8 +83,8 @@ Requirements: Node.js 20 or newer, npm, and the [webOS CLI](https://webostv.deve
 
 ```sh
 npm install --global @webos-tools/cli
-git clone https://github.com/Ravboni/race-weekend-viewer.git
-cd race-weekend-viewer
+git clone https://github.com/Ravboni/race-weekend-viewer-sanitized.git
+cd race-weekend-viewer-sanitized
 git switch develop
 ./scripts/package.sh
 ```
