@@ -112,7 +112,7 @@ When reporting a problem, include the TV model, webOS version, app version, even
 
 The app uses the supplied Race Weekend Viewer RW wordmark throughout its branding. The mark is tightly cropped from the transparent original so it remains large and legible in small graphics. The square launcher tile is [`assets/brand/race-weekend-viewer-logo.png`](assets/brand/race-weekend-viewer-logo.png); the original cropped transparent artwork is [`assets/brand/race-weekend-viewer-logo-master.png`](assets/brand/race-weekend-viewer-logo-master.png). The webOS package uses 80×80 and 130×130 versions of this mark in `icon.png` and `largeIcon.png`.
 
-The repository banner is [`assets/brand/race-weekend-viewer-social-preview.png`](assets/brand/race-weekend-viewer-social-preview.png) (1280×640). It places the exact supplied wordmark on a light panel for contrast against a dark racing-inspired background. The logo assets retain the source lettering and proportions; only the empty transparent margins are cropped for the app-sized files.
+The repository banner is [`assets/brand/race-weekend-viewer-social-preview.jpg`](assets/brand/race-weekend-viewer-social-preview.jpg) (1280×640). It places the exact supplied wordmark on a light panel for contrast against a dark racing-inspired background. The logo assets retain the source lettering and proportions; only the empty transparent margins are cropped for the app-sized files.
 
 ## Third-party software and project license
 
