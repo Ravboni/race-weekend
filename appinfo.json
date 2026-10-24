@@ -1,10 +1,10 @@
 {
   "id": "com.ravboni.raceweekend",
-  "version": "0.16.25",
+  "version": "0.16.26",
   "vendor": "Ravboni",
   "type": "web",
   "main": "index.html",
-  "title": "Race Weekend Viewer",
+  "title": "Race Weekend",
   "appDescription": "Unofficial F1 TV viewer for LG webOS",
   "icon": "icon.png",
   "largeIcon": "largeIcon.png",
