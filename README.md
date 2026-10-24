@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/brand/race-weekend-logo.png" alt="Black and red Race Weekend RW wordmark on a white tile" width="160">
+  <img src="assets/brand/race-weekend-logo-master.png" alt="Black and red Race Weekend logo" width="128">
 </p>
 
 <h1 align="center">Race Weekend</h1>
