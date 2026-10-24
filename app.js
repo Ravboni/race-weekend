@@ -973,9 +973,11 @@ async function startPlayback(item) {
     state.dashPlayer = player;
     const abrSettings = { limitBitrateByPortal: false };
     // Older webOS decoders can fail on high-bitrate F1 replay renditions even
-    // when Widevine setup succeeds. Keep those TVs on a conservative rendition.
+    // when Widevine setup succeeds. Start at the tested 540p rung and cap ABR
+    // below the 720p rung that fails on the OLED55E9PLA.
     if (document.documentElement.classList.contains("legacy-webos")) {
-      abrSettings.maxBitrate = { audio: -1, video: 2000 };
+      abrSettings.maxBitrate = { audio: -1, video: 2500 };
+      abrSettings.initialBitrate = { audio: -1, video: 2048 };
     }
     player.updateSettings({ debug: { logLevel: 0 }, streaming: { abr: abrSettings } });
     if (stream.drmType === "widevine") {

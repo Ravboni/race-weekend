@@ -76,7 +76,7 @@ The app requests streams allowed by the signed-in account and uses webOS playbac
 - Replay DRM metadata is not consistent across every archive item. Some replays may not play on a particular TV even when the account can open their details.
 - Playback compatibility depends on the TV model and webOS firmware. The LG C2 on webOS 11.2.0 and OLED55E9PLA on webOS 4.5 / firmware 05.50.00 have been checked end to end; other models may behave differently.
 - Older webOS browsers use a capability-detected compatibility path for layout, JavaScript APIs, account pairing, and remote navigation. This path was verified on the OLED55E9PLA (Chromium 53).
-- The legacy-browser playback path caps video at 2 Mbps. This avoids decoder failures seen on full-session replays on the OLED55E9PLA while leaving newer TV profiles uncapped.
+- The legacy-browser playback path starts at about 2 Mbps and caps video at 2.5 Mbps. On the OLED55E9PLA, this selects a stable 540p rendition; the next 720p H.264 rung failed to decode. Newer TV profiles remain uncapped.
 - Changes to F1's services may temporarily break sign-in, catalogue browsing, or playback.
 
 ## Build from source
