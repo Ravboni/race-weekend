@@ -80,7 +80,14 @@ function showToast(message) {
 function imageUrl(path, width, height) {
   if (!path) return "";
   const safePath = String(path).replace(/^\/+/, "");
-  return `${API_ORIGIN}/image-resizer/image/${safePath}?w=${width}&h=${height}&q=HI&o=L`;
+  const encodedPath = safePath.split("/").map((segment) => {
+    try {
+      return encodeURIComponent(decodeURIComponent(segment));
+    } catch (_error) {
+      return encodeURIComponent(segment);
+    }
+  }).join("/");
+  return `${API_ORIGIN}/image-resizer/image/${encodedPath}?w=${width}&h=${height}&q=HI&o=L`;
 }
 
 function contentList(container) {
