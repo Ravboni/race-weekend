@@ -683,6 +683,108 @@ function renderPlayerSubtitles() {
   });
 }
 
+const QUALITY_STORAGE_KEY = "rwVideoQuality";
+// Matches the legacy-webOS ABR ceiling applied at playback start. Auto restores
+// it; a manual pick lifts it so the chosen rung is not clamped back to the cap.
+const LEGACY_MAX_VIDEO_BITRATE = 2500;
+
+function savedVideoQuality() {
+  try {
+    const value = window.localStorage.getItem(QUALITY_STORAGE_KEY);
+    if (value === "auto" || /^\d+$/.test(value || "")) return value;
+  } catch (_error) {}
+  return "auto";
+}
+
+function storeVideoQuality(value) {
+  try { window.localStorage.setItem(QUALITY_STORAGE_KEY, String(value)); } catch (_error) {}
+}
+
+// One selectable rung per distinct height (the highest bitrate at that height),
+// low to high. The stream decides which heights exist, so the menu adapts to it.
+function videoQualityList(player) {
+  let list = [];
+  try { list = player?.getBitrateInfoListFor("video") || []; } catch (_error) {}
+  const byHeight = new Map();
+  for (const info of list) {
+    if (!info || !info.height) continue;
+    const best = byHeight.get(info.height);
+    if (!best || info.bitrate > best.bitrate) byHeight.set(info.height, info);
+  }
+  return [...byHeight.values()].sort((a, b) => a.height - b.height);
+}
+
+function autoQualityEnabled(player) {
+  try { return player.getSettings().streaming.abr.autoSwitchBitrate.video !== false; }
+  catch (_error) { return true; }
+}
+
+function setAutoQuality(player, enabled) {
+  // Keep the legacy cap only while adaptive; a manual pick needs it lifted or
+  // dash.js clamps the selected rung back down to the capped bitrate.
+  const legacy = document.documentElement.classList.contains("legacy-webos");
+  player.updateSettings({
+    streaming: {
+      abr: {
+        autoSwitchBitrate: { video: enabled },
+        maxBitrate: { audio: -1, video: enabled && legacy ? LEGACY_MAX_VIDEO_BITRATE : -1 },
+      },
+    },
+  });
+}
+
+// Apply the remembered preference once tracks are known. Auto is the default and
+// leaves adaptive switching (and any legacy bitrate cap) untouched.
+function applyPreferredQuality(player) {
+  const preferred = savedVideoQuality();
+  if (preferred === "auto") return;
+  const match = videoQualityList(player).find((info) => info.height === Number(preferred));
+  if (match) {
+    setAutoQuality(player, false);
+    player.setQualityFor("video", match.qualityIndex, true);
+  }
+}
+
+function renderPlayerQuality() {
+  const host = document.getElementById("player-quality-options");
+  if (!host) return;
+  host.replaceChildren();
+  const player = state.dashPlayer;
+  if (!player) {
+    host.append(element("p", "player-options-note", "Quality options appear when playback starts."));
+    return;
+  }
+  const list = videoQualityList(player);
+  if (!list.length) {
+    host.append(element("p", "player-options-note", "This feed does not offer selectable video qualities."));
+    return;
+  }
+  let current = -1;
+  try { current = player.getQualityFor("video"); } catch (_error) {}
+  const auto = autoQualityEnabled(player);
+  const activeRung = list.find((info) => info.qualityIndex === current);
+  const refocus = () => window.setTimeout(() => {
+    renderPlayerQuality();
+    host.querySelector(".player-option.is-selected")?.focus();
+  }, 150);
+  host.append(playerOption(auto && activeRung ? `Auto · ${activeRung.height}p` : "Auto", auto, () => {
+    storeVideoQuality("auto");
+    try { setAutoQuality(player, true); refocus(); }
+    catch (_error) { showToast("Could not change the video quality."); }
+  }));
+  list.forEach((info) => {
+    const label = `${info.height}p · ${(info.bitrate / 1e6).toFixed(1)} Mbps`;
+    host.append(playerOption(label, !auto && info.qualityIndex === current, () => {
+      storeVideoQuality(info.height);
+      try {
+        setAutoQuality(player, false);
+        player.setQualityFor("video", info.qualityIndex, true);
+        refocus();
+      } catch (_error) { showToast("Could not change the video quality."); }
+    }));
+  });
+}
+
 function playerPanelElement(kind) {
   return document.getElementById(kind === "sources" ? "player-sources-panel" : "player-language-panel");
 }
@@ -708,7 +810,7 @@ function showPlayerPanel(kind, { pushHistory = true, focus = true } = {}) {
   const panel = playerPanelElement(kind);
   if (!panel) return;
   if (kind === "sources") renderPlayerSources();
-  else { renderPlayerAudio(); renderPlayerSubtitles(); }
+  else { renderPlayerQuality(); renderPlayerAudio(); renderPlayerSubtitles(); }
   showPlayerChrome();
   if (pushHistory && state.playerPanel !== kind) {
     const historyState = { f1tv: true, screen: "player", panel: kind };
@@ -976,7 +1078,7 @@ async function startPlayback(item) {
     // when Widevine setup succeeds. Start at the tested 540p rung and cap ABR
     // below the 720p rung that fails on the OLED55E9PLA.
     if (document.documentElement.classList.contains("legacy-webos")) {
-      abrSettings.maxBitrate = { audio: -1, video: 2500 };
+      abrSettings.maxBitrate = { audio: -1, video: LEGACY_MAX_VIDEO_BITRATE };
       abrSettings.initialBitrate = { audio: -1, video: 2048 };
     }
     player.updateSettings({ debug: { logLevel: 0 }, streaming: { abr: abrSettings } });
@@ -995,6 +1097,8 @@ async function startPlayback(item) {
       status.textContent = "Playing on F1 TV";
       try { state.audioTracks = player.getTracksFor("audio") || []; } catch (_error) { state.audioTracks = []; }
       try { state.textTracks = player.getTracksFor("text") || []; } catch (_error) { state.textTracks = []; }
+      applyPreferredQuality(player);
+      renderPlayerQuality();
       renderPlayerAudio();
       renderPlayerSubtitles();
       video.play().catch(() => {});
