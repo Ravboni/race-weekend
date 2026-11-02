@@ -1,0 +1,104 @@
+(function setUpF1CatalogBridge() {
+  "use strict";
+
+  // Client side of the F1 catalog bridge (see service/service.js for the why).
+  //
+  // On webOS builds whose Chromium enforces Cross-Origin-Resource-Policy
+  // (Chrome 73+: webOS 6 = 79, webOS 22 = 87) the file:// app cannot read the
+  // same-origin-locked F1 API directly. This shim starts the bundled JS service
+  // over the Luna bus and rewrites F1 requests to the local proxy it exposes.
+  //
+  // Older webOS (e.g. the C9 on Chrome 53) does not enforce CORP and reaches the
+  // API directly, so this shim leaves those builds completely untouched.
+
+  var PROXY_ORIGIN = "http://127.0.0.1:18741";
+  var SERVICE_URI = "luna://com.ravboni.raceweekend.service";
+  var HOSTS = { "f1tv.formula1.com": 1, "api.formula1.com": 1, "id.formula1.com": 1 };
+
+  var userAgent = navigator.userAgent || "";
+  var chromeMatch = userAgent.match(/Chrome\/(\d+)/);
+  var chromeMajor = chromeMatch ? Number(chromeMatch[1]) : 0;
+  var isWebOS = /Web0S|webOS/i.test(userAgent);
+  var hasBridge = typeof window.PalmServiceBridge === "function";
+
+  // CORP is enforced from Chromium 73 on; below that (e.g. the C9) go direct.
+  if (!isWebOS || chromeMajor < 73 || !hasBridge) return;
+
+  function proxyURLFor(value) {
+    try {
+      var u = new URL(String(value));
+      if (u.protocol === "https:" && !u.port && !u.username && !u.password && HOSTS[u.hostname]) {
+        return PROXY_ORIGIN + "/" + u.hostname + u.pathname + u.search;
+      }
+    } catch (error) { /* not a URL we rewrite */ }
+    return null;
+  }
+
+  function lunaCall(method, params, onResponse) {
+    var bridge = new window.PalmServiceBridge();
+    bridge.onservicecallback = function (responseText) {
+      var payload = {};
+      try { payload = JSON.parse(responseText); } catch (error) { payload = {}; }
+      if (onResponse) onResponse(payload);
+    };
+    bridge.call(SERVICE_URI + "/" + method, JSON.stringify(params || {}));
+    return bridge; // keep a reference alive to hold subscriptions open
+  }
+
+  // Resolves to true once the proxy is listening, or false if it never comes
+  // up (then F1 requests fall back to going direct — no worse than no shim).
+  var readyResolve;
+  var ready = new Promise(function (resolve) { readyResolve = resolve; });
+  var settled = false;
+  var proxyUp = false;
+  function settle(up) { if (!settled) { settled = true; proxyUp = !!up; readyResolve(!!up); } }
+
+  // Hold a keepalive subscription for the app's lifetime so the service does
+  // not idle-exit (webos-service quits ~5s after its activity count hits zero).
+  var keepAlive = null;
+  lunaCall("start", {}, function (payload) {
+    if (payload && payload.listening) {
+      keepAlive = lunaCall("keepalive", { subscribe: true }, function () {});
+      settle(true);
+    } else {
+      settle(false);
+    }
+  });
+  // Don't let a missing/broken service hang every F1 request forever.
+  setTimeout(function () { settle(false); }, 4000);
+  window.addEventListener("beforeunload", function () { keepAlive = null; });
+
+  var originalFetch = window.fetch;
+  window.fetch = function (input, init) {
+    var isPlain = typeof input === "string" || input instanceof URL;
+    var target = isPlain ? proxyURLFor(input) : null;
+    if (!target) return originalFetch.call(this, input, init);
+    return ready.then(function (up) {
+      return originalFetch.call(window, up ? target : input, init);
+    });
+  };
+
+  if (window.XMLHttpRequest && XMLHttpRequest.prototype && XMLHttpRequest.prototype.open) {
+    var originalOpen = XMLHttpRequest.prototype.open;
+    XMLHttpRequest.prototype.open = function () {
+      var args = Array.prototype.slice.call(arguments);
+      if (proxyUp) {
+        var rewritten = proxyURLFor(args[1]);
+        if (rewritten) args[1] = rewritten;
+      }
+      return originalOpen.apply(this, args);
+    };
+  }
+
+  // Catalog artwork is loaded through <img>, which uses neither fetch nor XHR.
+  // The built app exposes a global imageUrl() helper; wrap it once it exists.
+  document.addEventListener("DOMContentLoaded", function () {
+    if (typeof window.imageUrl === "function") {
+      var originalImageUrl = window.imageUrl;
+      window.imageUrl = function () {
+        var out = originalImageUrl.apply(this, arguments);
+        return proxyURLFor(out) || out;
+      };
+    }
+  });
+})();
