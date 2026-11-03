@@ -21,6 +21,13 @@ These notes describe requests observed in the signed-in F1 TV TV-web client on a
 - Some entitled replay responses return a DASH manifest without Widevine fields. The 2026 Dutch Grand Prix Race replay returned `SDR_HD_DASH`; its DASH manifest had no `ContentProtection` elements. The player may use these clear DASH responses only when F1 supplies no DRM indicator or license URL, while Widevine-marked streams continue to use the returned license endpoint.
 - The C2's WebView exposes MSE and EME APIs. F1 TV's own player has played a subscribed live feed on this C2. The app requests the `WEB_DASH` playback profile with the account's verified subscription and entitlement tokens, then configures dash.js to use the returned Widevine license endpoint in the app's own player view. Phone pairing and live 1920×1080 playback were confirmed on the C2: `readyState` reached 4, Widevine media keys were attached, and decoded frames advanced without drops. The TV display showed the protected picture; remote WebView screenshots show black video, as expected for protected content capture.
 
+## Quality and subtitle defaults
+
+- The current `develop` player starts every stream with DASH adaptive bitrate selection enabled, with no app-imposed 540p ceiling. Manual quality choices apply to the current stream only; a new playback starts in Auto again.
+- Subtitle tracks start disabled. The viewer can enable a track during playback; fragmented TTML captions were confirmed in the C2 test build.
+- Full HD 1920×1080 playback was confirmed on the C2. Higher-than-540p playback was confirmed by the user on the rooted E9 test setup. This confirms those devices and test conditions; it does not remove decoder limits from all older TVs.
+- The latest public release (v0.16.29) predates these defaults. The merged changes are on `develop` and have not yet been published in a release.
+
 ## Sign-in
 
 - The app uses F1's OAuth device authorization flow. The TV shows F1's official pairing code and URL; the user approves the TV on their phone.

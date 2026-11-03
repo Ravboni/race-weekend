@@ -24,7 +24,7 @@
 
 | | |
 | --- | --- |
-| Latest release | [v0.16.29](https://github.com/Ravboni/race-weekend/releases/tag/v0.16.29) |
+| Latest release | [v0.2.0](https://github.com/Ravboni/race-weekend/releases/tag/v0.2.0) |
 | Compatibility | See tested TV and webOS versions below |
 | Install package | `.ipk` from GitHub Releases |
 | TV setup | Rooted or Developer Mode |
@@ -32,13 +32,15 @@
 
 ### Tested TV compatibility
 
-| TV | webOS version | Compatibility |
+| TV | webOS / browser | Verified results |
 | --- | --- | --- |
-| LG OLED55C25LB (C2) | 11.2.0 | Fully supported |
-| LG OLED55E9PLA (E9) | 4.5 | Supported up to 540p |
-| Model not provided | 6 | Confirmed not supported |
+| LG OLED55C25LB (C2) | webOS 11.2.0 | End-to-end app use; 1080p playback, audio, feeds, and subtitle selection confirmed. The hardened catalog bridge was also exercised. |
+| LG OLED55E9PLA (E9) | webOS 4.5, firmware 05.50.00, Chromium 53 | Catalogue, phone pairing, remote navigation, and replay picture/audio confirmed. Playback above 540p was confirmed on this rooted test setup. |
+| LG 43UP7500PSF | webOS 6.5.3-47, Chrome 79 | Home catalogue and artwork loaded through the bundled bridge. Playback was not tested on this model. |
 
-The C2 and E9 have been checked end to end. On the LG OLED55E9PLA (webOS 4.5, firmware 05.50.00, Chromium 53), the development build loaded the catalogue and artwork, completed F1 phone pairing, and supported remote navigation. Full 2026 United States GP Practice 1 and Practice 2 replays were confirmed with picture and audio at 540p, and the picture quality was reported as good. The next H.264 step, 720p, failed on this TV. The legacy-browser profile therefore targets 540p; other streams, TV models, and firmware versions may behave differently. The webOS 6 report did not include the TV model.
+The app's former fixed 540p bitrate ceiling has been removed in v0.2.0. New playback starts in adaptive **Auto** with no app-imposed 540p cap; manual quality choices are available per stream and are not saved for the next stream. The E9's higher-quality playback was confirmed on this rooted test setup after earlier tests at 540p. This does not remove decoder or firmware limitations on every webOS 4.5 TV: the maximum quality can still vary by model, firmware, stream, and network.
+
+These results describe specific devices and test builds, not every TV running the same webOS version. Release v0.2.0 includes the current playback defaults and subtitle updates described above.
 
 ## Install on your TV
 
@@ -61,7 +63,8 @@ The attestation proves which repository workflow produced the package and binds 
 - Browse F1 TV home, live events, archive, search results, and video details.
 - Sign in using F1's official phone-pairing flow.
 - Play entitled live sessions and replays when F1 provides a stream compatible with the TV.
-- Choose a live feed independently from the language and subtitle options offered for that feed.
+- Choose a live feed independently from the audio language and subtitles offered for that feed.
+- Start each stream in adaptive Auto quality with subtitles Off; select a specific available quality or subtitle track during playback.
 - Navigate with the TV remote, including playback controls and D-pad seeking.
 - Show a TV-scale interface with large cards, Roboto typography, and clear focus states.
 
@@ -84,7 +87,10 @@ The app requests streams allowed by the signed-in account and uses webOS playbac
 - Replay DRM metadata is not consistent across every archive item. Some replays may not play on a particular TV even when the account can open their details.
 - Playback compatibility depends on the TV model and webOS firmware. The configurations listed in [Tested TV compatibility](#tested-tv-compatibility) have been checked or reported; other combinations are unverified.
 - Older webOS browsers use a capability-detected compatibility path for layout, JavaScript APIs, account pairing, and remote navigation. This path was verified on the OLED55E9PLA (Chromium 53).
-- **Verified legacy playback:** On the OLED55E9PLA, full 2026 United States GP Practice 1 and Practice 2 replays both played with picture and audio at 540p; the user confirmed the picture quality was good. The next H.264 rung (720p, about 3.65 Mbps) failed on this TV. The legacy profile starts at about 2 Mbps and caps video at 2.5 Mbps to select the tested 540p rendition. Newer TV profiles remain uncapped.
+- **Quality selection:** Version v0.2.0 starts every TV in adaptive Auto and does not impose the former 540p bitrate ceiling. Available manual quality choices apply only to the current stream. Higher-than-540p playback was confirmed on the rooted OLED55E9PLA test setup; unmodified TVs with older decoders may still have hardware or firmware limits.
+- **Subtitles:** New streams start with subtitles Off. F1 subtitle tracks remain selectable, and fragmented TTML rendering was confirmed in the C2 test build.
+- **webOS 6:** The bundled bridge restored catalogue and artwork loading on the LG 43UP7500PSF test unit. Playback on that model has not been verified.
+- Release v0.2.0 includes the playback defaults and subtitle updates described above.
 - Changes to F1's services may temporarily break sign-in, catalogue browsing, or playback.
 
 ## Build from source
