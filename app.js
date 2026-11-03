@@ -46,6 +46,7 @@ const state = {
   selectedChannelId: "",
   audioTracks: [],
   textTracks: [],
+  subtitleChoiceMade: false,
   currentView: "home",
   playerPanel: null,
   playerOverlay: false,
@@ -651,6 +652,13 @@ function subtitleTrackLabel(track, index) {
   return detail.length ? detail.join(" · ") : `Subtitle ${index + 1}`;
 }
 
+function disableDefaultSubtitles(player) {
+  try {
+    player.enableText(false);
+    player.setTextTrack(-1);
+  } catch (_error) {}
+}
+
 function renderPlayerSubtitles() {
   const host = document.getElementById("player-subtitle-options");
   if (!host) return;
@@ -667,7 +675,13 @@ function renderPlayerSubtitles() {
     enabled = player?.isTextEnabled?.() ?? false;
   } catch (_error) {}
   host.append(playerOption("Off", !enabled, () => {
-    try { player.setTextTrack(-1); renderPlayerSubtitles(); host.querySelector(".player-option.is-selected")?.focus(); }
+    try {
+      state.subtitleChoiceMade = true;
+      player.enableText(false);
+      player.setTextTrack(-1);
+      renderPlayerSubtitles();
+      host.querySelector(".player-option.is-selected")?.focus();
+    }
     catch (_error) { showToast("Could not turn subtitles off."); }
   }));
   state.textTracks.forEach((track, index) => {
@@ -675,29 +689,13 @@ function renderPlayerSubtitles() {
     const selected = enabled && currentIndex === trackIndex;
     host.append(playerOption(subtitleTrackLabel(track, index), selected, () => {
       try {
+        state.subtitleChoiceMade = true;
         player.enableText(true);
         player.setTextTrack(trackIndex);
         window.setTimeout(() => { renderPlayerSubtitles(); host.querySelector(".player-option.is-selected")?.focus(); }, 150);
       } catch (_error) { showToast("Could not switch the subtitle track."); }
     }));
   });
-}
-
-const QUALITY_STORAGE_KEY = "rwVideoQuality";
-// Matches the legacy-webOS ABR ceiling applied at playback start. Auto restores
-// it; a manual pick lifts it so the chosen rung is not clamped back to the cap.
-const LEGACY_MAX_VIDEO_BITRATE = 2500;
-
-function savedVideoQuality() {
-  try {
-    const value = window.localStorage.getItem(QUALITY_STORAGE_KEY);
-    if (value === "auto" || /^\d+$/.test(value || "")) return value;
-  } catch (_error) {}
-  return "auto";
-}
-
-function storeVideoQuality(value) {
-  try { window.localStorage.setItem(QUALITY_STORAGE_KEY, String(value)); } catch (_error) {}
 }
 
 // One selectable rung per distinct height (the highest bitrate at that height),
@@ -727,22 +725,10 @@ function setAutoQuality(player, enabled) {
     streaming: {
       abr: {
         autoSwitchBitrate: { video: enabled },
-        maxBitrate: { audio: -1, video: enabled && legacy ? LEGACY_MAX_VIDEO_BITRATE : -1 },
+        maxBitrate: { audio: -1, video: -1 },
       },
     },
   });
-}
-
-// Apply the remembered preference once tracks are known. Auto is the default and
-// leaves adaptive switching (and any legacy bitrate cap) untouched.
-function applyPreferredQuality(player) {
-  const preferred = savedVideoQuality();
-  if (preferred === "auto") return;
-  const match = videoQualityList(player).find((info) => info.height === Number(preferred));
-  if (match) {
-    setAutoQuality(player, false);
-    player.setQualityFor("video", match.qualityIndex, true);
-  }
 }
 
 function renderPlayerQuality() {
@@ -768,14 +754,12 @@ function renderPlayerQuality() {
     host.querySelector(".player-option.is-selected")?.focus();
   }, 150);
   host.append(playerOption(auto && activeRung ? `Auto · ${activeRung.height}p` : "Auto", auto, () => {
-    storeVideoQuality("auto");
     try { setAutoQuality(player, true); refocus(); }
     catch (_error) { showToast("Could not change the video quality."); }
   }));
   list.forEach((info) => {
     const label = `${info.height}p · ${(info.bitrate / 1e6).toFixed(1)} Mbps`;
     host.append(playerOption(label, !auto && info.qualityIndex === current, () => {
-      storeVideoQuality(info.height);
       try {
         setAutoQuality(player, false);
         player.setQualityFor("video", info.qualityIndex, true);
@@ -1068,19 +1052,18 @@ async function startPlayback(item) {
   status.textContent = "Requesting your F1 TV stream…";
   setView("player");
   showPlayerChrome();
+  state.subtitleChoiceMade = false;
   try {
     const stream = await state.session.play(contentId, state.selectedChannelId);
     if (!window.dashjs?.MediaPlayer) throw new Error("The TV player engine did not load.");
     const player = window.dashjs.MediaPlayer().create();
     state.dashPlayer = player;
-    const abrSettings = { limitBitrateByPortal: false };
-    // Older webOS decoders can fail on high-bitrate F1 replay renditions even
-    // when Widevine setup succeeds. Start at the tested 540p rung and cap ABR
-    // below the 720p rung that fails on the OLED55E9PLA.
-    if (document.documentElement.classList.contains("legacy-webos")) {
-      abrSettings.maxBitrate = { audio: -1, video: LEGACY_MAX_VIDEO_BITRATE };
-      abrSettings.initialBitrate = { audio: -1, video: 2048 };
-    }
+    // Start every TV in adaptive Auto mode with no legacy 540p ceiling.
+    const abrSettings = {
+      limitBitrateByPortal: false,
+      autoSwitchBitrate: { audio: true, video: true },
+      maxBitrate: { audio: -1, video: -1 },
+    };
     player.updateSettings({ debug: { logLevel: 0 }, streaming: { abr: abrSettings } });
     if (stream.drmType === "widevine") {
       player.setProtectionData({
@@ -1097,7 +1080,7 @@ async function startPlayback(item) {
       status.textContent = "Playing on F1 TV";
       try { state.audioTracks = player.getTracksFor("audio") || []; } catch (_error) { state.audioTracks = []; }
       try { state.textTracks = player.getTracksFor("text") || []; } catch (_error) { state.textTracks = []; }
-      applyPreferredQuality(player);
+      if (!state.subtitleChoiceMade) disableDefaultSubtitles(player);
       renderPlayerQuality();
       renderPlayerAudio();
       renderPlayerSubtitles();
@@ -1107,6 +1090,7 @@ async function startPlayback(item) {
     const textTrackAdded = window.dashjs.MediaPlayer.events.TEXT_TRACK_ADDED;
     if (textTrackAdded) player.on(textTrackAdded, () => {
       try { state.textTracks = player.getTracksFor("text") || []; } catch (_error) { state.textTracks = []; }
+      if (!state.subtitleChoiceMade) disableDefaultSubtitles(player);
       renderPlayerSubtitles();
     });
     player.on(window.dashjs.MediaPlayer.events.PLAYBACK_ERROR, () => {
