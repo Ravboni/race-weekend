@@ -608,11 +608,40 @@ function renderPlayerSources() {
   });
 }
 
+// F1 streams tag tracks with bare language codes ("eng", "fra_subtitle"); turn
+// the code into a readable name, leaving anything unrecognised as-is.
+const LANGUAGE_NAMES = {
+  en: "English", eng: "English",
+  de: "German", deu: "German", ger: "German",
+  fr: "French", fra: "French", fre: "French",
+  nl: "Dutch", nld: "Dutch", dut: "Dutch",
+  pt: "Portuguese", por: "Portuguese",
+  es: "Spanish", spa: "Spanish",
+  it: "Italian", ita: "Italian",
+  ja: "Japanese", jpn: "Japanese",
+  zh: "Chinese", zho: "Chinese", chi: "Chinese",
+  pl: "Polish", pol: "Polish",
+  hu: "Hungarian", hun: "Hungarian",
+  ar: "Arabic", ara: "Arabic",
+  fx: "No commentary (track sound)",
+};
+
+function languageName(code) {
+  const base = String(code || "").split(/[-_]/)[0].toLowerCase();
+  if (!base) return "";
+  return LANGUAGE_NAMES[base] || String(code);
+}
+
+// A Label that is itself just a language code adds nothing next to the name.
+function readableTrackLabel(label) {
+  return /^[a-z]{2,3}(?:[_-][a-z0-9]+)*$/i.test(String(label || "")) ? "" : label;
+}
+
 function audioTrackLabel(track, index) {
   const label = Array.isArray(track.labels) ? track.labels.map((entry) => entry?.text || entry).filter(Boolean)[0] : "";
   const role = Array.isArray(track.roles) ? track.roles.map((entry) => entry?.value || entry).filter(Boolean)[0] : "";
-  const language = track.lang || track.language || "";
-  const detail = [label, language, role].filter(Boolean).map((part) => String(part).trim()).filter((part, i, all) => all.indexOf(part) === i);
+  const language = languageName(track.lang || track.language);
+  const detail = [readableTrackLabel(label), language, role].filter(Boolean).map((part) => String(part).trim()).filter((part, i, all) => all.indexOf(part) === i);
   return detail.length ? detail.join(" · ") : `Audio ${index + 1}`;
 }
 
