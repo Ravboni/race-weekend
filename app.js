@@ -1062,6 +1062,11 @@ async function startPlayback(item) {
     video.ontimeupdate = updateTimeline;
     video.onprogress = updateTimeline;
     player.initialize(video, stream.manifest, true);
+    const ttmlRenderingDiv = document.getElementById("player-ttml-rendering");
+    if (ttmlRenderingDiv) {
+      try { player.attachTTMLRenderingDiv(ttmlRenderingDiv); }
+      catch (error) { console.warn("Could not attach the TTML subtitle renderer.", error); }
+    }
     if (!state.playerPanel) video.focus();
     window.clearInterval(state.timelineTimer);
     state.timelineTimer = window.setInterval(updateTimeline, 1000);
