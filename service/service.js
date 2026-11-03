@@ -19,7 +19,7 @@
 //   * runs as the app's non-root service user,
 //   * is started on demand by the app over the Luna bus (see bridge.js),
 //   * listens only on 127.0.0.1 and forwards only an allowlist of F1 paths
-//     over normal TLS, adding no credentials and storing nothing.
+//     over normal TLS, adding no credentials and persisting no session state.
 //
 // webOS 6's Node is v8.12, so this file stays ES5-ish: `URL` comes from 'url'
 // and https.request() is given an options object (it does not accept a WHATWG
@@ -28,10 +28,13 @@
 var Service = require("webos-service");
 var http = require("http");
 var https = require("https");
+var crypto = require("crypto");
 var URL = require("url").URL;
 
 var PORT = 18741;
+var APP_ID = "com.ravboni.raceweekend";
 var APP_ORIGIN = "file://com.ravboni.raceweekend-webos";
+var TOKEN_PARAM = "__rwv_session";
 
 // host -> allowed path prefixes. Mirrors the documented catalog/auth/image
 // endpoints the app needs; everything else is refused.
@@ -41,33 +44,64 @@ var ALLOWED = {
   "id.formula1.com": /^\/as\/(?:device_authorization|token)$/
 };
 
-function upstreamURL(raw) {
+function upstreamURL(raw, token) {
   var match = /^\/([^/]+)(\/[^#]*)$/.exec(raw);
   if (!match || !ALLOWED[match[1]]) return null;
   var u = new URL("https://" + match[1] + match[2]);
   if (u.hostname !== match[1] || u.port || u.username || u.password || !ALLOWED[u.hostname].test(u.pathname)) {
     return null;
   }
+  var sessionTokens = u.searchParams.getAll(TOKEN_PARAM);
+  if (sessionTokens.length !== 1 || !safeTokenEqual(sessionTokens[0], token)) return null;
+  u.searchParams.delete(TOKEN_PARAM);
   return u;
 }
 
-function createProxy() {
-  return http.createServer(function (req, res) {
-    res.setHeader("Access-Control-Allow-Origin", "*");
+function safeTokenEqual(candidate, expected) {
+  if (typeof candidate !== "string" || typeof expected !== "string" || !/^[a-f0-9]{64}$/.test(candidate) || !/^[a-f0-9]{64}$/.test(expected)) return false;
+  var a = Buffer.from(candidate, "hex");
+  var b = Buffer.from(expected, "hex");
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+function requestOriginAllowed(origin) {
+  return origin === undefined || origin === APP_ORIGIN;
+}
+
+function addCorsHeaders(req, res) {
+  var origin = req.headers.origin;
+  if (origin === APP_ORIGIN) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Vary", "Origin");
     res.setHeader("Access-Control-Allow-Headers", "accept, content-type, ascendontoken, entitlementtoken, customdata, range");
     res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, POST, OPTIONS");
-    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
-    res.setHeader("Cache-Control", "no-store");
+  }
+  res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+  res.setHeader("Cache-Control", "no-store");
+}
 
+var sessionToken = null;
+
+function createProxy() {
+  return http.createServer(function (req, res) {
     var origin = req.headers.origin;
-    if (origin && origin !== "null" && origin !== APP_ORIGIN && origin !== "http://127.0.0.1:" + PORT) {
+    if (!requestOriginAllowed(origin)) {
       res.writeHead(403); res.end(); return;
     }
-    var url = upstreamURL(req.url);
+    var url = upstreamURL(req.url, sessionToken);
     if (!url || ["GET", "HEAD", "POST", "OPTIONS"].indexOf(req.method) === -1) {
       res.writeHead(403); res.end(); return;
     }
-    if (req.method === "OPTIONS") { res.writeHead(204); res.end(); return; }
+    if (req.method === "OPTIONS") {
+      var requestedMethod = req.headers["access-control-request-method"];
+      if (["GET", "HEAD", "POST"].indexOf(requestedMethod) === -1) { res.writeHead(403); res.end(); return; }
+      var requestedHeaders = (req.headers["access-control-request-headers"] || "").split(",").map(function (header) { return header.trim().toLowerCase(); }).filter(Boolean);
+      var allowedHeaders = ["accept", "content-type", "ascendontoken", "entitlementtoken", "customdata", "range"];
+      if (requestedHeaders.some(function (header) { return allowedHeaders.indexOf(header) === -1; })) { res.writeHead(403); res.end(); return; }
+      addCorsHeaders(req, res);
+      res.writeHead(204); res.end(); return;
+    }
+    addCorsHeaders(req, res);
 
     var headers = { "user-agent": "Mozilla/5.0", accept: "*/*" };
     ["accept", "content-type", "ascendontoken", "entitlementtoken", "customdata", "range"].forEach(function (key) {
@@ -134,12 +168,15 @@ ensureListening(function () {});
 var service = new Service("com.ravboni.raceweekend.service");
 
 service.register("start", function (message) {
+  if (message.sender !== APP_ID) { message.respond({ started: false, error: "unauthorized" }); return; }
+  sessionToken = crypto.randomBytes(32).toString("hex");
   ensureListening(function (ok) {
-    message.respond({ started: ok, listening: !!(server && server.listening), port: PORT, error: lastError });
+    message.respond({ started: ok, listening: !!(server && server.listening), port: PORT, token: ok ? sessionToken : null, error: lastError });
   });
 });
 
 service.register("status", function (message) {
+  if (message.sender !== APP_ID) { message.respond({ listening: false, error: "unauthorized" }); return; }
   message.respond({ listening: !!(server && server.listening), port: PORT, error: lastError });
 });
 
@@ -150,5 +187,6 @@ service.register("status", function (message) {
 // reloads, the subscription drops and the service exits cleanly on its own —
 // no lingering process, no root daemon.
 service.register("keepalive", function (message) {
+  if (message.sender !== APP_ID) { message.respond({ subscribed: false, listening: false, error: "unauthorized" }); return; }
   message.respond({ subscribed: !!message.isSubscription, listening: !!(server && server.listening), port: PORT });
 });

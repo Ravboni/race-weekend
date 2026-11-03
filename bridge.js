@@ -24,14 +24,21 @@
   // CORP is enforced from Chromium 73 on; below that (e.g. the C9) go direct.
   if (!isWebOS || chromeMajor < 73 || !hasBridge) return;
 
-  function proxyURLFor(value) {
+  function isProxyableURL(value) {
     try {
       var u = new URL(String(value));
-      if (u.protocol === "https:" && !u.port && !u.username && !u.password && HOSTS[u.hostname]) {
-        return PROXY_ORIGIN + "/" + u.hostname + u.pathname + u.search;
-      }
+      return u.protocol === "https:" && !u.port && !u.username && !u.password && !!HOSTS[u.hostname];
     } catch (error) { /* not a URL we rewrite */ }
-    return null;
+    return false;
+  }
+
+  function proxyURLFor(value, token) {
+    if (!isProxyableURL(value) || !isSessionToken(token || sessionToken)) return null;
+    try {
+      var u = new URL(String(value));
+      u.searchParams.append("__rwv_session", token || sessionToken);
+      return PROXY_ORIGIN + "/" + u.hostname + u.pathname + u.search;
+    } catch (error) { return null; }
   }
 
   function lunaCall(method, params, onResponse) {
@@ -51,13 +58,17 @@
   var ready = new Promise(function (resolve) { readyResolve = resolve; });
   var settled = false;
   var proxyUp = false;
+  var sessionToken = null;
   function settle(up) { if (!settled) { settled = true; proxyUp = !!up; readyResolve(!!up); } }
+
+  function isSessionToken(value) { return typeof value === "string" && /^[a-f0-9]{64}$/.test(value); }
 
   // Hold a keepalive subscription for the app's lifetime so the service does
   // not idle-exit (webos-service quits ~5s after its activity count hits zero).
   var keepAlive = null;
   lunaCall("start", {}, function (payload) {
-    if (payload && payload.listening) {
+    if (payload && payload.listening && payload.started && isSessionToken(payload.token)) {
+      sessionToken = payload.token;
       keepAlive = lunaCall("keepalive", { subscribe: true }, function () {});
       settle(true);
     } else {
@@ -71,10 +82,10 @@
   var originalFetch = window.fetch;
   window.fetch = function (input, init) {
     var isPlain = typeof input === "string" || input instanceof URL;
-    var target = isPlain ? proxyURLFor(input) : null;
-    if (!target) return originalFetch.call(this, input, init);
+    if (!isPlain || !isProxyableURL(input)) return originalFetch.call(this, input, init);
     return ready.then(function (up) {
-      return originalFetch.call(window, up ? target : input, init);
+      var target = up ? proxyURLFor(input, sessionToken) : null;
+      return originalFetch.call(window, target || input, init);
     });
   };
 

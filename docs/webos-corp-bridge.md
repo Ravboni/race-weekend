@@ -43,11 +43,20 @@ The proxy ships **inside the app's own IPK as a webOS JS service**
 - The service listens only on `127.0.0.1:18741`, forwards only an allowlist of
   F1 hosts/paths (`f1tv.formula1.com` `1.0|2.0|4.0|image-resizer`,
   `api.formula1.com /static/jwks.json`, `id.formula1.com /as/…`) over normal
-  TLS, adds no credentials, and stores nothing. Non-F1 media (the Akamai CDN) is
-  not proxied; it has no CORP restriction and is fetched directly.
+  TLS, adds no credentials, and persists no session state. Non-F1 media (the
+  Akamai CDN) is not proxied; it has no CORP restriction and is fetched directly.
 - `bridge.js` only activates on webOS with Chrome ≥ 73. On older webOS (the C9)
   it does nothing and the app reaches the API directly, exactly as before.
 - The CSP gains `http://127.0.0.1:18741` in `connect-src` and `img-src` only.
+- Each app launch establishes a fresh 256-bit session token over the app's own
+  Luna service call. The proxy requires that token on every forwarded request
+  and removes it before contacting F1; the token is not logged or sent upstream.
+- The service accepts setup/status/keepalive calls only from the Race Weekend
+  app ID. The local HTTP proxy no longer returns wildcard CORS: it allows only
+  the packaged app origin observed on the C2 (`file://com.ravboni.raceweekend-webos`),
+  and only the required methods and request headers. Other origins, including
+  `null`, are rejected. Missing-origin requests still need the unpredictable
+  session token and receive no CORS read permission.
 
 webOS 6's Node is v8.12, so `service.js` stays ES5-ish (`URL` from `url`,
 `https.request` with an options object).
@@ -62,14 +71,16 @@ webOS 6's Node is v8.12, so `service.js` stays ES5-ish (`URL` from `url`,
 
 ## Verification
 
-Built with `scripts/package.sh` and validated on an LG 43UP7500PSF, webOS
-6.5.3-47, Chrome 79 (installed via the unprivileged `dev/install`): the service
-ran as a non-root user on `127.0.0.1:18741`, `bridge.js` started it on load, and
-the home feed rendered 47 cards with the menu, `PAGE/395`, and all artwork
-served `200` through the proxy with `Cross-Origin-Resource-Policy: cross-origin`
-— with no root daemon. The keepalive subscription kept the service alive across
-an idle period. Playback uses the same allowlisted proxy for its F1 API calls
-and the direct CDN path for media, unchanged from the existing setup.
+The original bridge was validated on an LG 43UP7500PSF, webOS 6.5.3-47, Chrome
+79. The hardened build v0.16.32 was installed on an LG OLED55C25LB (C2): the
+app reported the expected packaged origin, home and playback API requests and
+artwork completed through the bridge, and playback remained active at 1920×1080.
+Requests from an unrelated web origin and from `null` without a session token
+returned `403` with no `Access-Control-Allow-Origin` header. The same build was
+installed on an LG OLED55E9PLA; the user confirmed the higher-quality replay
+still worked. The E9 runs an older browser, so its bridge remains inactive.
+Playback media continues directly from the CDN; the bridge's session token and
+API forwarding do not touch media segments or bitrate choice.
 
 ## Note for signed/published builds
 
