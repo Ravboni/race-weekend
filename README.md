@@ -24,7 +24,7 @@
 
 | | |
 | --- | --- |
-| Latest release | [v0.16.29](https://github.com/Ravboni/race-weekend/releases/tag/v0.16.29) |
+| Latest release | [v0.2.0](https://github.com/Ravboni/race-weekend/releases/tag/v0.2.0) |
 | Compatibility | See tested TV and webOS versions below |
 | Install package | `.ipk` from GitHub Releases |
 | TV setup | Rooted or Developer Mode |
@@ -38,9 +38,9 @@
 | LG OLED55E9PLA (E9) | webOS 4.5, firmware 05.50.00, Chromium 53 | Catalogue, phone pairing, remote navigation, and replay picture/audio confirmed. Playback above 540p was confirmed on this rooted test setup. |
 | LG 43UP7500PSF | webOS 6.5.3-47, Chrome 79 | Home catalogue and artwork loaded through the bundled bridge. Playback was not tested on this model. |
 
-The app's former fixed 540p bitrate ceiling has been removed from the current `develop` code. New playback starts in adaptive **Auto** with no app-imposed 540p cap; manual quality choices are available per stream and are not saved for the next stream. The E9's higher-quality playback was confirmed on this rooted test setup after earlier tests at 540p. This does not remove decoder or firmware limitations on every webOS 4.5 TV: the maximum quality can still vary by model, firmware, stream, and network.
+The app's former fixed 540p bitrate ceiling has been removed in v0.2.0. New playback starts in adaptive **Auto** with no app-imposed 540p cap; manual quality choices are available per stream and are not saved for the next stream. The E9's higher-quality playback was confirmed on this rooted test setup after earlier tests at 540p. This does not remove decoder or firmware limitations on every webOS 4.5 TV: the maximum quality can still vary by model, firmware, stream, and network.
 
-These results describe specific devices and test builds, not every TV running the same webOS version. The latest public release is still v0.16.29; it predates the changes merged to `develop`, so the uncapped Auto default will be included in a future release.
+These results describe specific devices and test builds, not every TV running the same webOS version. Release v0.2.0 includes the current playback defaults and subtitle updates described above.
 
 ## Install on your TV
 
@@ -87,10 +87,10 @@ The app requests streams allowed by the signed-in account and uses webOS playbac
 - Replay DRM metadata is not consistent across every archive item. Some replays may not play on a particular TV even when the account can open their details.
 - Playback compatibility depends on the TV model and webOS firmware. The configurations listed in [Tested TV compatibility](#tested-tv-compatibility) have been checked or reported; other combinations are unverified.
 - Older webOS browsers use a capability-detected compatibility path for layout, JavaScript APIs, account pairing, and remote navigation. This path was verified on the OLED55E9PLA (Chromium 53).
-- **Quality selection:** The current `develop` code starts every TV in adaptive Auto and does not impose the former 540p bitrate ceiling. Available manual quality choices apply only to the current stream. Higher-than-540p playback was confirmed on the rooted OLED55E9PLA test setup; unmodified TVs with older decoders may still have hardware or firmware limits.
+- **Quality selection:** Version v0.2.0 starts every TV in adaptive Auto and does not impose the former 540p bitrate ceiling. Available manual quality choices apply only to the current stream. Higher-than-540p playback was confirmed on the rooted OLED55E9PLA test setup; unmodified TVs with older decoders may still have hardware or firmware limits.
 - **Subtitles:** New streams start with subtitles Off. F1 subtitle tracks remain selectable, and fragmented TTML rendering was confirmed in the C2 test build.
 - **webOS 6:** The bundled bridge restored catalogue and artwork loading on the LG 43UP7500PSF test unit. Playback on that model has not been verified.
-- The latest public release (v0.16.29) predates the changes merged to `develop`; those playback defaults and subtitle updates require a future release before appearing in the downloadable package.
+- Release v0.2.0 includes the playback defaults and subtitle updates described above.
 - Changes to F1's services may temporarily break sign-in, catalogue browsing, or playback.
 
 ## Build from source
