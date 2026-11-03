@@ -71,16 +71,24 @@ webOS 6's Node is v8.12, so `service.js` stays ES5-ish (`URL` from `url`,
 
 ## Verification
 
-The original bridge was validated on an LG 43UP7500PSF, webOS 6.5.3-47, Chrome
-79. The hardened build v0.16.32 was installed on an LG OLED55C25LB (C2): the
-app reported the expected packaged origin, home and playback API requests and
-artwork completed through the bridge, and playback remained active at 1920×1080.
-Requests from an unrelated web origin and from `null` without a session token
-returned `403` with no `Access-Control-Allow-Origin` header. The same build was
-installed on an LG OLED55E9PLA; the user confirmed the higher-quality replay
-still worked. The E9 runs an older browser, so its bridge remains inactive.
-Playback media continues directly from the CDN; the bridge's session token and
-API forwarding do not touch media segments or bitrate choice.
+The bridge's catalog behavior was validated on an LG 43UP7500PSF running webOS
+6.5.3-47 / Chrome 79: the home catalogue and artwork loaded through the bundled
+service. Playback was not tested on that model.
+
+The hardened v0.16.33 test build was installed on the LG OLED55C25LB (C2). Its
+packaged origin matched the allowlist; home, playback API, and artwork requests
+completed through the bridge; playback remained active at 1920×1080; and
+requests from an unrelated web origin and from `null` without a session token
+returned `403` with no `Access-Control-Allow-Origin` header. The build was also
+installed and launched on the LG OLED55E9PLA (E9). The user confirmed higher-
+quality playback on that rooted test setup with v0.16.32; the E9's Chromium 53
+browser does not activate the bridge. Playback media continues directly from the
+CDN, so the bridge's token and API forwarding do not touch media segments or
+quality selection.
+
+The v0.16.33 package was a developer test build, not a public release. The newer
+Auto-by-default quality and subtitles-Off behavior merged to `develop` after
+that build and still needs device confirmation.
 
 ## Note for signed/published builds
 
