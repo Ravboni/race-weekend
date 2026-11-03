@@ -4,7 +4,8 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DIST_DIR="${ROOT_DIR}/dist"
 STAGE_DIR="$(mktemp -d)"
-trap 'rm -rf "${STAGE_DIR}"' EXIT
+SERVICE_STAGE_DIR="$(mktemp -d)"
+trap 'rm -rf "${STAGE_DIR}" "${SERVICE_STAGE_DIR}"' EXIT
 
 mkdir -p "${DIST_DIR}"
 
@@ -15,11 +16,19 @@ cp "${ROOT_DIR}/appinfo.json" \
    "${ROOT_DIR}/app.js" \
    "${ROOT_DIR}/auth.js" \
    "${ROOT_DIR}/compat.js" \
+   "${ROOT_DIR}/bridge.js" \
    "${ROOT_DIR}/legacy-webos.css" \
    "${ROOT_DIR}/styles.css" \
    "${ROOT_DIR}/icon.png" \
    "${ROOT_DIR}/largeIcon.png" \
    "${STAGE_DIR}/"
+
+# Stage the bundled JS service (the F1 catalog bridge). It ships inside the same
+# IPK, installs unprivileged with the app, and is started on demand by bridge.js.
+cp "${ROOT_DIR}/service/services.json" \
+   "${ROOT_DIR}/service/package.json" \
+   "${ROOT_DIR}/service/service.js" \
+   "${SERVICE_STAGE_DIR}/"
 # The brand artwork is used by this README; the TV launcher consumes the two
 # correctly-sized root icons above. Only the font assets ship at runtime.
 mkdir -p "${STAGE_DIR}/assets"
@@ -32,7 +41,7 @@ if [[ ! -d "${ROOT_DIR}/node_modules/@babel/core" ]]; then
 fi
 node "${ROOT_DIR}/scripts/transpile.js" "${STAGE_DIR}"
 
-ares-package --no-minify -o "${DIST_DIR}" "${STAGE_DIR}"
+ares-package --no-minify -o "${DIST_DIR}" "${STAGE_DIR}" "${SERVICE_STAGE_DIR}"
 
 PACKAGE_ID="$(node -p "require('${ROOT_DIR}/appinfo.json').id")"
 PACKAGE_VERSION="$(node -p "require('${ROOT_DIR}/appinfo.json').version")"

@@ -1,0 +1,5 @@
+{
+  "name": "com.ravboni.raceweekend.service",
+  "main": "service.js",
+  "private": true
+}
