@@ -643,11 +643,29 @@ function renderPlayerAudio() {
   });
 }
 
+const subtitleLanguageNames = {
+  ar: "Arabic", ara: "Arabic", de: "German", deu: "German", ger: "German", en: "English", eng: "English",
+  es: "Spanish", spa: "Spanish", fr: "French", fra: "French", fre: "French", it: "Italian", ita: "Italian",
+  ja: "Japanese", jpn: "Japanese", nl: "Dutch", nld: "Dutch", dut: "Dutch", pt: "Portuguese", por: "Portuguese",
+  ru: "Russian", rus: "Russian", zh: "Chinese", zho: "Chinese", chi: "Chinese", ko: "Korean", kor: "Korean",
+  pl: "Polish", pol: "Polish", sv: "Swedish", swe: "Swedish", da: "Danish", dan: "Danish", no: "Norwegian", nor: "Norwegian"
+};
+
+function subtitleLanguageName(code) {
+  const normalized = String(code || "").trim().toLowerCase().replace(/[_-].*$/, "");
+  return subtitleLanguageNames[normalized] || "";
+}
+
 function subtitleTrackLabel(track, index) {
-  const label = Array.isArray(track.labels) ? track.labels.map((entry) => entry?.text || entry).filter(Boolean)[0] : "";
-  const language = track.lang || track.language || "";
+  const rawLabel = Array.isArray(track.labels) ? track.labels.map((entry) => entry?.text || entry).filter(Boolean)[0] : "";
+  const label = String(rawLabel || "").trim();
+  const labelCode = /^[a-z]{2,3}(?:[_-](?:subtitle|subtitles|cc|sdh))?$/i.test(label)
+    ? label.split(/[_-]/)[0]
+    : "";
+  const language = subtitleLanguageName(labelCode) || subtitleLanguageName(track.lang || track.language) || String(track.lang || track.language || "").trim();
+  const humanLabel = label && !labelCode ? label : "";
   const role = Array.isArray(track.roles) ? track.roles.map((entry) => entry?.value || entry).filter(Boolean)[0] : "";
-  const detail = [label, language, role].filter(Boolean).map((part) => String(part).trim()).filter((part, i, all) => all.indexOf(part) === i);
+  const detail = [humanLabel, language, role].filter(Boolean).map((part) => String(part).trim()).filter((part, i, all) => all.indexOf(part) === i);
   return detail.length ? detail.join(" · ") : `Subtitle ${index + 1}`;
 }
 
