@@ -2,7 +2,7 @@
 
 Race Weekend is built to let you use F1 TV on an LG webOS television. This guide installs the prebuilt app package. You need an LG webOS TV on the same local network as the computer used to install it. Check the [tested TV compatibility matrix](../README.md#tested-tv-compatibility) before installing; compatibility is model- and firmware-specific.
 
-The v0.2.0 release includes adaptive Auto quality without the former 540p cap and starts playback with subtitles Off.
+The v0.2.1 release adds Ultra HD playback options on qualifying 4K TVs, including adaptive Ultra HD Auto. Playback starts in adaptive Auto without the former 540p cap and with subtitles Off.
 
 ## 1. Download the app
 
