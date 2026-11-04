@@ -1167,3 +1167,45 @@ button:focus, input:focus, select:focus, textarea:focus { outline: none; }
   background: var(--accent);
   color: #fff;
 }
+
+/* Player buttons sit over the TV's hardware video plane. A backdrop-filter
+   there is drawn as a black rectangle around the rounded buttons on webOS 6
+   (Chromium 79), so player buttons use a solid fill and their own focus
+   highlight instead of the blurred glass. */
+.player-view .button-glass {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border: 2px solid rgba(255,255,255,.38);
+  background: rgba(22,23,29,.88);
+  box-shadow: none;
+}
+.player-view .button-glass:focus {
+  outline: none;
+  transform: scale(1.06);
+  border-color: #fff;
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 0 0 3px rgba(255,255,255,.9);
+}
+
+/* App version and updates. */
+.sign-out-app {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(255,255,255,.12);
+  color: var(--ink-subtle);
+  font-size: 18px;
+}
+.sign-out-app .button { min-width: 0; margin-top: 0; }
+.update-dialog { z-index: 22; }
+.update-card { width: min(960px, 86vw); padding: 56px; }
+.update-card h2 { font-size: 38px; line-height: 1.2; }
+.update-card #update-detail { max-width: 760px; margin: 18px auto 0; }
+.update-card canvas { width: 220px; height: 220px; }
+.update-card .sign-out-actions { margin-top: 32px; }
+.update-card .sign-out-actions .button { min-width: 0; padding-inline: 36px; white-space: nowrap; }
+.update-card .update-auto { min-width: 0; min-height: 56px; margin-top: 24px; font-size: 17px; }

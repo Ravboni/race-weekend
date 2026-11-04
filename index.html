@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="color-scheme" content="dark">
     <meta name="theme-color" content="#090a0e">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'; script-src 'self' file:; style-src 'self' file: 'unsafe-inline'; font-src 'self' file:; img-src 'self' file: data: http://127.0.0.1:18741 https://f1tv.formula1.com https://*.formula1.com https://f1prodlive.akamaized.net; connect-src 'self' http://127.0.0.1:18741 https://f1tv.formula1.com https://id.formula1.com https://api.formula1.com https://*.formula1.com https://f1prodlive.akamaized.net; media-src 'self' file: blob: https://f1tv.formula1.com https://*.formula1.com https://f1prodlive.akamaized.net; worker-src 'self' file: blob:">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'; script-src 'self' file:; style-src 'self' file: 'unsafe-inline'; font-src 'self' file:; img-src 'self' file: data: http://127.0.0.1:18741 https://f1tv.formula1.com https://*.formula1.com https://f1prodlive.akamaized.net; connect-src 'self' http://127.0.0.1:18741 https://api.github.com https://f1tv.formula1.com https://id.formula1.com https://api.formula1.com https://*.formula1.com https://f1prodlive.akamaized.net; media-src 'self' file: blob: https://f1tv.formula1.com https://*.formula1.com https://f1prodlive.akamaized.net; worker-src 'self' file: blob:">
     <title>Race Weekend</title>
     <script src="compat.js"></script>
     <script src="bridge.js"></script>
@@ -119,6 +119,7 @@
           <p id="pairing-code" class="pairing-code" hidden></p>
           <p id="pairing-status" class="pairing-status">Starting secure sign-in…</p>
           <button id="sign-in-cancel" class="button button-secondary focusable" type="button">Cancel</button>
+          <button id="sign-in-updates" class="button button-secondary focusable sign-in-updates" type="button">App updates</button>
         </div>
       </section>
       <section id="sign-out-dialog" class="sign-in-dialog sign-out-dialog" role="dialog" aria-modal="true" aria-labelledby="sign-out-title" hidden>
@@ -130,6 +131,24 @@
             <button id="sign-out-cancel" class="button button-secondary focusable" type="button">Cancel</button>
             <button id="sign-out-confirm" class="button button-primary focusable" type="button">Log out</button>
           </div>
+          <div class="sign-out-app">
+            <span id="sign-out-version">Race Weekend</span>
+            <button id="sign-out-updates" class="button button-secondary focusable" type="button">App updates</button>
+          </div>
+        </div>
+      </section>
+      <section id="update-dialog" class="sign-in-dialog update-dialog" role="dialog" aria-modal="true" aria-labelledby="update-title" hidden>
+        <div class="sign-in-card update-card">
+          <p class="detail-eyebrow">RACE WEEKEND UPDATES</p>
+          <h2 id="update-title">Checking for updates…</h2>
+          <p id="update-detail"></p>
+          <canvas id="update-qr" width="240" height="240" hidden></canvas>
+          <div class="sign-out-actions">
+            <button id="update-install" class="button button-primary focusable" type="button" hidden>Update now</button>
+            <button id="update-skip" class="button button-secondary focusable" type="button" hidden>Skip this version</button>
+            <button id="update-close" class="button button-secondary focusable" type="button">Close</button>
+          </div>
+          <button id="update-auto" class="button button-secondary focusable update-auto" type="button">Automatic update checks: On</button>
         </div>
       </section>
     </div>

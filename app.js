@@ -54,6 +54,27 @@ const state = {
   signOutReturnFocus: null,
   pendingSeekValue: null,
   pageLoadSequence: 0,
+  // 4K (hls.js) playback; see the "4K playback" section.
+  hlsPlayer: null,
+  hlsLoading: null,
+  lastEngine: "dash",
+  playbackSeq: 0,
+  uhdTv: null,
+  uhdTvCheck: null,
+  uhdCheck: null,
+  webosReleaseCheck: null,
+  // In-app updates; see the "App updates" section.
+  update: null,
+  updateReturnFocus: null,
+  pendingUpdateDialog: false,
+  uhdMaxHeight: 0,
+  uhdPlayingHeight: 0,
+  uhdAutoDowngraded: false,
+  uhdWatchTimer: null,
+  updateCheckSeq: 0,
+  subtitleManual: false,
+  updateInstalling: false,
+  lastDashHeights: [],
 };
 
 function element(tagName, className, text) {
@@ -172,6 +193,10 @@ function setView(name, { pushHistory = true } = {}) {
   }
   state.currentView = name;
   scheduleHeroAutoAdvance();
+  if (name !== "player" && state.pendingUpdateDialog) {
+    state.pendingUpdateDialog = false;
+    window.setTimeout(openUpdateDialog, 0);
+  }
   if (changed) {
     state.playerPanel = null;
     state.playerOverlay = false;
@@ -650,6 +675,10 @@ function renderPlayerAudio() {
   const host = document.getElementById("player-audio-options");
   if (!host) return;
   host.replaceChildren();
+  if (state.hlsPlayer) {
+    renderHlsAudio(host);
+    return;
+  }
   const player = state.dashPlayer;
   let current = null;
   try { current = player?.getCurrentTrackFor("audio") || null; } catch (_error) {}
@@ -662,6 +691,7 @@ function renderPlayerAudio() {
     host.append(playerOption(audioTrackLabel(track, index), selected, () => {
       try {
         player.setCurrentTrack(track);
+        rememberAudioLanguage(track.lang);
         window.setTimeout(() => {
           renderPlayerAudio();
           host.querySelector(".player-option.is-selected")?.focus();
@@ -710,6 +740,10 @@ function renderPlayerSubtitles() {
   const host = document.getElementById("player-subtitle-options");
   if (!host) return;
   host.replaceChildren();
+  if (state.hlsPlayer) {
+    renderHlsSubtitles(host);
+    return;
+  }
   const player = state.dashPlayer;
   if (!state.textTracks.length) {
     host.append(element("p", "player-options-note", player ? "No subtitles are available for this feed." : "Subtitle tracks appear when playback starts."));
@@ -724,8 +758,10 @@ function renderPlayerSubtitles() {
   host.append(playerOption("Off", !enabled, () => {
     try {
       state.subtitleChoiceMade = true;
+      state.subtitleManual = true;
       player.enableText(false);
       player.setTextTrack(-1);
+      rememberSubtitlesOff();
       renderPlayerSubtitles();
       host.querySelector(".player-option.is-selected")?.focus();
     }
@@ -737,8 +773,10 @@ function renderPlayerSubtitles() {
     host.append(playerOption(subtitleTrackLabel(track, index), selected, () => {
       try {
         state.subtitleChoiceMade = true;
+        state.subtitleManual = true;
         player.enableText(true);
         player.setTextTrack(trackIndex);
+        rememberSubtitleLanguage(track.lang);
         window.setTimeout(() => { renderPlayerSubtitles(); host.querySelector(".player-option.is-selected")?.focus(); }, 150);
       } catch (_error) { showToast("Could not switch the subtitle track."); }
     }));
@@ -781,15 +819,36 @@ function setAutoQuality(player, enabled) {
 function renderPlayerQuality() {
   const host = document.getElementById("player-quality-options");
   if (!host) return;
+  // Re-rendering replaces the buttons; keep remote focus inside the list.
+  const hadFocus = host.contains(document.activeElement);
   host.replaceChildren();
+  renderQualityOptions(host);
+  if (hadFocus) {
+    const target = host.querySelector(".player-option.is-selected") || host.querySelector(".player-option:not([disabled])");
+    target?.focus();
+  }
+}
+
+function renderQualityOptions(host) {
+  if (state.hlsPlayer) {
+    // 4K runs on hls.js with a single 2160p rendition. The HD choices return
+    // to the dash.js player: "Auto" adaptive, or a fixed height.
+    host.append(playerOption("Auto", false, () => leaveUhd()));
+    const heights = state.lastDashHeights.length ? state.lastDashHeights : [360, 540, 720, 1080];
+    heights.forEach((height) => host.append(playerOption(`${height}p`, false, () => leaveUhd(height))));
+    renderUhdOption(host);
+    return;
+  }
   const player = state.dashPlayer;
   if (!player) {
     host.append(element("p", "player-options-note", "Quality options appear when playback starts."));
     return;
   }
   const list = videoQualityList(player);
+  if (list.length) state.lastDashHeights = list.map((info) => info.height);
   if (!list.length) {
     host.append(element("p", "player-options-note", "This feed does not offer selectable video qualities."));
+    renderUhdOption(host);
     return;
   }
   let current = -1;
@@ -801,19 +860,741 @@ function renderPlayerQuality() {
     host.querySelector(".player-option.is-selected")?.focus();
   }, 150);
   host.append(playerOption(auto && activeRung ? `Auto · ${activeRung.height}p` : "Auto", auto, () => {
-    try { setAutoQuality(player, true); refocus(); }
+    try { rememberHdQuality(0); setAutoQuality(player, true); refocus(); }
     catch (_error) { showToast("Could not change the video quality."); }
   }));
   list.forEach((info) => {
     const label = `${info.height}p · ${(info.bitrate / 1e6).toFixed(1)} Mbps`;
     host.append(playerOption(label, !auto && info.qualityIndex === current, () => {
       try {
+        rememberHdQuality(info.height);
         setAutoQuality(player, false);
         player.setQualityFor("video", info.qualityIndex, true);
         refocus();
       } catch (_error) { showToast("Could not change the video quality."); }
     }));
   });
+  renderUhdOption(host);
+}
+
+// ---------------------------------------------------------------------------
+// 4K playback
+//
+// F1 TV serves 2160p only through the 3.0 PLAY API with the HDR_UHD_CMAFWV
+// profile: HLS/CMAF, HEVC Main10 HLG, Widevine. dash.js cannot play that, so
+// the 2160p choice uses hls.js (vendor/hls.min.js, loaded on demand) while every
+// other quality keeps the dash.js path. The option is offered only when the TV
+// qualifies (4K panel, HEVC through MSE, hardware-secure Widevine for HEVC) and
+// is enabled only when this programme's master playlist lists an above-HD HEVC
+// rendition whose media playlist actually answers (finished replays of the most
+// recent events still return 404 there for a while). A fatal hls.js error falls
+// back to the HD player at the same position.
+//
+// Every F1 rendition is 50 fps. When MediaCapabilities reports 2160p50 HEVC as
+// smooth, the option plays 2160p. TVs that cannot confirm it (webOS 4.x has no
+// MediaCapabilities) offer three choices: Auto, 2160p and 1620p (the master's
+// 2880x1620 HDR rendition). Auto starts at 2160p and watches the decoder; when
+// it falls behind, playback continues at 1620p (see watchUhdSmoothness).
+//
+// Measured on the OLED C9 (webOS 4.10, docs/ULTRA-HD.md): protected 2160p50
+// plays at a full 50 fps, but only while the Live TV app is closed. webOS 4
+// keeps Live TV running behind apps opened over it, and its tuner decoder then
+// shares the TV's video decoder: 2160p50 drops to ~43 fps (0.85x) while 1620p50
+// still plays at 50 fps. Apps cannot see or close Live TV (the application
+// manager's running list is not available to them), so Auto measures dropped
+// frames instead. On rooted TVs with the webOS Homebrew Channel, the app closes
+// a background Live TV itself before it plays 2160p (closeBackgroundLiveTv).
+// ---------------------------------------------------------------------------
+const UHD_HEIGHT = 2160;
+const UHD_FALLBACK_HEIGHT = 1620;
+const UHD_PROFILE = "HDR_UHD_CMAFWV";
+const UHD_HEVC = 'video/mp4; codecs="hvc1.2.4.L153.B0"';
+const UHD_PREFERENCE_KEY = "raceWeekendPreferUhd";
+// "2160" or "1620" for a fixed Ultra HD height; missing means Auto. Used only
+// on TVs that cannot confirm smooth 2160p50.
+const UHD_HEIGHT_KEY = "raceWeekendUhdHeight";
+// Auto steps down when more than 1 frame in UHD_DROP_LIMIT is dropped over
+// UHD_WATCH_WINDOW ms of steady playback.
+const UHD_DROP_LIMIT = 25;
+const UHD_WATCH_WINDOW = 6000;
+const ISO_639_2_TO_1 = {
+  ara: "ar", chi: "zh", dan: "da", deu: "de", dut: "nl", eng: "en", fra: "fr", fre: "fr", ger: "de", hun: "hu",
+  ita: "it", jpn: "ja", kor: "ko", nld: "nl", nor: "no", pol: "pl", por: "pt", rus: "ru", spa: "es", swe: "sv", zho: "zh",
+};
+
+function languageBase(code) {
+  const base = String(code || "").trim().toLowerCase().split(/[-_]/)[0];
+  return ISO_639_2_TO_1[base] || base;
+}
+
+function uhdPreferred() {
+  try { return window.localStorage.getItem(UHD_PREFERENCE_KEY) === "1"; } catch (_error) { return false; }
+}
+
+function setUhdPreferred(enabled) {
+  try {
+    if (enabled) window.localStorage.setItem(UHD_PREFERENCE_KEY, "1");
+    else window.localStorage.removeItem(UHD_PREFERENCE_KEY);
+  } catch (_error) {}
+}
+
+function chromeMajorVersion() {
+  const match = /Chrome\/(\d+)/.exec(navigator.userAgent || "");
+  return match ? Number(match[1]) : 0;
+}
+
+function webosDeviceInfo() {
+  try { return JSON.parse(window.PalmSystem.deviceInfo) || {}; } catch (_error) { return {}; }
+}
+
+function loadHlsEngine() {
+  if (window.Hls) return Promise.resolve(window.Hls);
+  if (!state.hlsLoading) {
+    state.hlsLoading = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = "vendor/hls.min.js";
+      script.onload = () => (window.Hls ? resolve(window.Hls) : reject(new Error("The 4K player engine did not load.")));
+      script.onerror = () => {
+        script.remove();
+        state.hlsLoading = null;
+        reject(new Error("The 4K player engine did not load."));
+      };
+      document.head.appendChild(script);
+    });
+  }
+  return state.hlsLoading;
+}
+
+function tvSupportsUhd() {
+  if (!state.uhdTvCheck) {
+    state.uhdTvCheck = (async () => {
+      const info = webosDeviceInfo();
+      if (!(Number(info.screenWidth) >= 3840 && Number(info.screenHeight) >= 2160)) return false;
+      if (!window.MediaSource || !MediaSource.isTypeSupported(UHD_HEVC)) return false;
+      try {
+        await navigator.requestMediaKeySystemAccess("com.widevine.alpha", [{
+          initDataTypes: ["cenc"],
+          videoCapabilities: [{ contentType: UHD_HEVC, robustness: "HW_SECURE_DECODE" }],
+          audioCapabilities: [{ contentType: 'audio/mp4; codecs="mp4a.40.2"', robustness: "HW_SECURE_CRYPTO" }],
+        }]);
+        const Hls = await loadHlsEngine();
+        if (!Hls.isSupported()) return false;
+        state.uhdMaxHeight = (await smoothUhdDecode()) ? UHD_HEIGHT : UHD_FALLBACK_HEIGHT;
+        return true;
+      } catch (_error) {
+        return false;
+      }
+    })().then((supported) => {
+      state.uhdTv = supported;
+      return supported;
+    });
+  }
+  return state.uhdTvCheck;
+}
+
+// True only when the TV says it decodes 2160p50 HEVC smoothly. Browsers without
+// MediaCapabilities (Chromium < 66, e.g. webOS 4.x) cannot confirm it.
+async function smoothUhdDecode() {
+  if (!navigator.mediaCapabilities?.decodingInfo) return false;
+  try {
+    const info = await navigator.mediaCapabilities.decodingInfo({
+      type: "media-source",
+      video: { contentType: UHD_HEVC, width: 3840, height: 2160, bitrate: 18000000, framerate: 50 },
+    });
+    return Boolean(info?.supported && info.smooth);
+  } catch (_error) {
+    return false;
+  }
+}
+
+// True on 4K TVs that cannot confirm smooth 2160p50: they get the Auto, 2160p
+// and 1620p choices.
+function uhdUnconfirmed() {
+  return state.uhdMaxHeight > 0 && state.uhdMaxHeight < UHD_HEIGHT;
+}
+
+function uhdHeightChoice() {
+  const value = readSetting(UHD_HEIGHT_KEY);
+  return value === "2160" || value === "1620" ? value : "auto";
+}
+
+// The tallest available height no taller than the viewer's choice (Auto: 2160p
+// until it stepped down during this visit), else the shortest available.
+function uhdPlaybackHeight(heights) {
+  let target = UHD_HEIGHT;
+  if (uhdUnconfirmed()) {
+    const choice = uhdHeightChoice();
+    if (choice === "auto") target = state.uhdAutoDowngraded ? UHD_FALLBACK_HEIGHT : UHD_HEIGHT;
+    else target = Number(choice);
+  }
+  return heights.find((height) => height <= target) || heights[heights.length - 1];
+}
+
+// The app came back to the foreground: Live TV may have been opened or closed
+// meanwhile, so Auto tries 2160p again on the next start.
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) state.uhdAutoDowngraded = false;
+});
+
+// Rooted TVs only: through the Homebrew Channel's root exec, close the Live TV
+// app when it is running in the background. Resolves true when it was closed.
+// Without the Homebrew Channel the call fails and nothing changes.
+const LIVE_TV_CLOSE_COMMAND = "luna-send -n 1 -w 3000 luna://com.webos.applicationManager/running '{}' </dev/null"
+  + " | grep -q '\"id\" *: *\"com.webos.app.livetv\"'"
+  + " && luna-send -n 1 -w 5000 luna://com.webos.applicationManager/closeByAppId '{\"id\":\"com.webos.app.livetv\"}' </dev/null"
+  + " | grep -q '\"returnValue\" *: *true' && echo closed";
+
+function closeBackgroundLiveTv() {
+  return new Promise((resolve) => {
+    if (typeof window.PalmServiceBridge !== "function") {
+      resolve(false);
+      return;
+    }
+    const timer = window.setTimeout(() => resolve(false), 5000);
+    try {
+      state.liveTvBridge = homebrewCall("exec", { command: LIVE_TV_CLOSE_COMMAND }, (message) => {
+        window.clearTimeout(timer);
+        resolve(message.returnValue === true && /closed/.test(message.stdoutString || ""));
+      });
+    } catch (_error) {
+      window.clearTimeout(timer);
+      resolve(false);
+    }
+  });
+}
+
+function videoFrameCounts(video) {
+  try {
+    if (typeof video.getVideoPlaybackQuality === "function") {
+      const quality = video.getVideoPlaybackQuality();
+      return { decoded: quality.totalVideoFrames, dropped: quality.droppedVideoFrames };
+    }
+    if (typeof video.webkitDecodedFrameCount === "number") {
+      return { decoded: video.webkitDecodedFrameCount, dropped: video.webkitDroppedFrameCount };
+    }
+  } catch (_error) {}
+  return null;
+}
+
+// Auto at 2160p on a TV that cannot confirm it: every 2 s, compare the frames
+// dropped against those shown over the last UHD_WATCH_WINDOW of steady playback
+// (paused, seeking and buffering reset the window). Too many drops mean the
+// decoder is not keeping up, so playback resumes at the same position in
+// 1620p, which Auto then keeps until the app returns to the foreground.
+function watchUhdSmoothness(video, hls) {
+  window.clearInterval(state.uhdWatchTimer);
+  let base = null;
+  state.uhdWatchTimer = window.setInterval(() => {
+    if (state.hlsPlayer !== hls) {
+      window.clearInterval(state.uhdWatchTimer);
+      state.uhdWatchTimer = null;
+      return;
+    }
+    const frames = videoFrameCounts(video);
+    if (!frames || video.paused || video.seeking || video.readyState < 3) {
+      base = null;
+      return;
+    }
+    if (!base) {
+      base = { ...frames, time: Date.now() };
+      return;
+    }
+    if (Date.now() - base.time < UHD_WATCH_WINDOW) return;
+    const dropped = frames.dropped - base.dropped;
+    const total = frames.decoded - base.decoded;
+    if (total > 0 && dropped * UHD_DROP_LIMIT > total) {
+      window.clearInterval(state.uhdWatchTimer);
+      state.uhdWatchTimer = null;
+      state.uhdAutoDowngraded = true;
+      showToast("This TV is dropping frames at 2160p right now. Switching to 1620p HDR.");
+      restartPlayback({ resumeAt: resumePosition() });
+      return;
+    }
+    base = { ...frames, time: Date.now() };
+  }, 2000);
+}
+
+function uhdLabel(height) {
+  return height >= UHD_HEIGHT ? `${height}p · 4K HDR` : `${height}p · HDR`;
+}
+
+// The webOS release ("4.10.2", "6.5.3"). F1 rejects the 3.0 PLAY request from
+// older browsers (Chromium 53) when the device info has no osVersion.
+function webosRelease() {
+  if (!state.webosReleaseCheck) {
+    state.webosReleaseCheck = new Promise((resolve) => {
+      const timer = window.setTimeout(() => resolve(""), 2500);
+      try {
+        const bridge = new window.PalmServiceBridge();
+        state.webosReleaseBridge = bridge;
+        bridge.onservicecallback = (message) => {
+          window.clearTimeout(timer);
+          try { resolve(String(JSON.parse(message).webos_release || "").replace(/[^0-9.]/g, "")); }
+          catch (_error) { resolve(""); }
+        };
+        bridge.call("luna://com.webos.service.systemservice/osInfo/query", JSON.stringify({ parameters: ["webos_release"] }));
+      } catch (_error) {
+        window.clearTimeout(timer);
+        resolve("");
+      }
+    });
+  }
+  return state.webosReleaseCheck;
+}
+
+async function uhdDeviceHeader() {
+  const model = String(webosDeviceInfo().modelName || "webOS TV").replace(/[^A-Za-z0-9._-]/g, "");
+  const [release, version] = await Promise.all([webosRelease(), appVersion()]);
+  const osVersion = release ? `osVersion=${release};` : "";
+  return `device=web;screen=browser;os=webos;browser=chrome;browserVersion=${chromeMajorVersion()};model=${model};${osVersion}appVersion=${version || "0"};playerVersion=4.7.4;p=true;tms=1`;
+}
+
+function trustedUhdUrl(value, isLicense) {
+  try {
+    const url = new URL(value);
+    const host = url.hostname;
+    const trusted = isLicense
+      ? host === "f1tv.formula1.com"
+      : host === "formula1.com" || host.endsWith(".formula1.com") || host === "f1prodlive.akamaized.net";
+    return url.protocol === "https:" && !url.port && !url.username && !url.password && trusted ? url.href : "";
+  } catch (_error) {
+    return "";
+  }
+}
+
+// The best above-HD HEVC rendition no taller than maxHeight: HDR before SDR,
+// then the highest resolution, then the first listed.
+function uhdVariant(master, maxHeight = UHD_HEIGHT) {
+  const lines = String(master).split(/\r?\n/);
+  let best = null;
+  for (let index = 0; index < lines.length - 1; index += 1) {
+    const line = lines[index];
+    if (line.indexOf("#EXT-X-STREAM-INF:") !== 0 || !/\b(?:hev1|hvc1)\./.test(line)) continue;
+    const resolution = line.match(/RESOLUTION=(\d+)x(\d+)/);
+    const height = resolution ? Number(resolution[2]) : 0;
+    if (height <= 1080 || height > maxHeight) continue;
+    const hdr = /VIDEO-RANGE=(?:HLG|PQ)/.test(line) ? 1 : 0;
+    if (!best || hdr > best.hdr || (hdr === best.hdr && height > best.height)) {
+      best = { line: index, uri: lines[index + 1].trim(), height, hdr };
+    }
+  }
+  return best;
+}
+
+function setMediaAttribute(line, name, value) {
+  const pattern = new RegExp(`([:,])${name}=[A-Z]+`);
+  return pattern.test(line) ? line.replace(pattern, `$1${name}=${value}`) : `${line},${name}=${value}`;
+}
+
+// Keep only the chosen above-HD HEVC rendition (so hls.js never switches),
+// start on the audio language that was playing in HD, and start with subtitles
+// off unless the viewer already chose a subtitle language.
+function prepareUhdMaster(master, { audioLanguage = "", subtitleLanguage = "", maxHeight = UHD_HEIGHT } = {}) {
+  const lines = String(master).split(/\r?\n/);
+  const variant = uhdVariant(master, maxHeight);
+  const out = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (line.indexOf("#EXT-X-STREAM-INF:") === 0) {
+      if (!variant || index === variant.line) out.push(line, lines[index + 1]);
+      index += 1;
+    } else if (line.indexOf("#EXT-X-I-FRAME-STREAM-INF:") !== 0) {
+      out.push(line);
+    }
+  }
+  [["AUDIO", audioLanguage], ["SUBTITLES", subtitleLanguage]].forEach(([type, language]) => {
+    const media = [];
+    out.forEach((line, index) => {
+      if (line.indexOf("#EXT-X-MEDIA:") === 0 && new RegExp(`TYPE=${type}(?:,|$)`).test(line)) media.push(index);
+    });
+    const wanted = language
+      ? media.find((index) => languageBase((/LANGUAGE="([^"]*)"/.exec(out[index]) || [])[1]) === languageBase(language))
+      : undefined;
+    if (type === "AUDIO" && wanted === undefined) return; // keep the stream's own default audio
+    media.forEach((index) => {
+      const chosen = index === wanted ? "YES" : "NO";
+      out[index] = setMediaAttribute(setMediaAttribute(out[index], "DEFAULT", chosen), "AUTOSELECT", chosen);
+    });
+  });
+  return out.join("\n");
+}
+
+async function requestUhdStream(contentId, channelId) {
+  if (!(await tvSupportsUhd())) return null;
+  // Built by hand: Chromium 53 has no record constructor for URLSearchParams.
+  let query = `contentId=${encodeURIComponent(String(contentId))}&player=player_bm`;
+  if (channelId) query += `&channelId=${encodeURIComponent(String(channelId))}`;
+  const device = await uhdDeviceHeader();
+  const response = await fetch(`${API_ORIGIN}/3.0/R/ENG/BIG_SCREEN_DASH/ALL/CONTENT/PLAY?${query}`, {
+    credentials: "omit",
+    headers: {
+      ...state.session.headers(),
+      accept: "application/json",
+      "x-f1-device-info": device,
+      "x-f1-override-video-stream": UHD_PROFILE,
+    },
+  });
+  if (!response.ok) return null;
+  const data = await response.json();
+  const stream = data.resultObj;
+  if (data.resultCode !== "OK" || !stream || stream.streamType !== UHD_PROFILE) return null;
+  const url = trustedUhdUrl(stream.url || stream.manifestUrl, false);
+  const licenseUrl = trustedUhdUrl(stream.laURL || stream.laUrl || stream.licenseUrl, true);
+  if (!url || !licenseUrl) return null;
+  const master = await fetch(url, { credentials: "omit" });
+  if (!master.ok) return null;
+  const masterText = await master.text();
+  // The 2160p choice, plus 1620p on TVs that cannot confirm smooth 2160p50.
+  const limits = uhdUnconfirmed() ? [UHD_HEIGHT, UHD_FALLBACK_HEIGHT] : [UHD_HEIGHT];
+  const heights = [];
+  for (const limit of limits) {
+    const variant = uhdVariant(masterText, limit);
+    if (!variant || !variant.uri || heights.includes(variant.height)) continue;
+    const media = await fetch(new URL(variant.uri, url).href, { credentials: "omit" });
+    if (media.ok) heights.push(variant.height);
+  }
+  if (!heights.length) return null;
+  return {
+    url,
+    licenseUrl,
+    device,
+    entitlementToken: stream.entitlementToken || state.session.entitlement,
+    drmToken: stream.drmToken || "",
+    heights,
+  };
+}
+
+function uhdCheckKey(contentId, channelId) {
+  return `${contentId}|${channelId || ""}`;
+}
+
+// One availability check per programme/feed, reused for up to 10 minutes (or
+// maxAge). A network error is not remembered, so the next look retries.
+function uhdStreamFor(contentId, channelId, { maxAge = 10 * 60 * 1000 } = {}) {
+  const key = uhdCheckKey(contentId, channelId);
+  const cached = state.uhdCheck;
+  if (cached && cached.key === key && !cached.failed && (cached.pending || Date.now() - cached.time < maxAge)) return cached.promise;
+  const check = { key, time: Date.now(), pending: true, failed: false, stream: null };
+  check.promise = requestUhdStream(contentId, channelId).catch(() => {
+    check.failed = true;
+    return null;
+  }).then((stream) => {
+    check.pending = false;
+    check.stream = stream;
+    if (state.playerPanel === "language") renderPlayerQuality();
+    return stream;
+  });
+  state.uhdCheck = check;
+  return check.promise;
+}
+
+function currentContentId() {
+  const item = state.selectedItem;
+  return item ? item.metadata?.contentId || item.id : "";
+}
+
+function refreshUhdAvailability() {
+  const contentId = currentContentId();
+  if (!contentId) return;
+  tvSupportsUhd().then((supported) => {
+    if (state.playerPanel === "language") renderPlayerQuality();
+    if (supported) uhdStreamFor(contentId, state.selectedChannelId);
+  });
+}
+
+function renderUhdOption(host) {
+  if (state.uhdTv !== true) return;
+  const active = Boolean(state.hlsPlayer);
+  const check = state.uhdCheck;
+  const current = check?.key === uhdCheckKey(currentContentId(), state.selectedChannelId) ? check : null;
+  const heights = current?.stream?.heights || [];
+  const playing = active ? state.uhdPlayingHeight : 0;
+  const notice = (text) => {
+    host.append(playerOption(`Ultra HD · ${text}`, false, () => {}, true));
+  };
+  if (!active) {
+    if (!current || current.pending) return notice("checking…");
+    if (current.failed) return notice("could not check");
+    if (!heights.length) return notice("not available for this video");
+  }
+  // value: "auto", "2160" or "1620". Choosing what is already playing does nothing.
+  const choose = (value) => () => {
+    const auto = value === "auto";
+    if (active) {
+      if (!uhdUnconfirmed()) return;
+      if (auto ? uhdHeightChoice() === "auto" && !state.uhdAutoDowngraded : uhdHeightChoice() === value) return;
+    }
+    writeSetting(UHD_HEIGHT_KEY, auto ? null : value);
+    if (auto) state.uhdAutoDowngraded = false;
+    setUhdPreferred(true);
+    restartPlayback({ resumeAt: resumePosition() });
+  };
+  if (!uhdUnconfirmed() || heights.length < 2) {
+    const height = playing || heights[0] || state.uhdMaxHeight || UHD_HEIGHT;
+    host.append(playerOption(uhdLabel(height), active, choose(String(height))));
+    return;
+  }
+  const choice = uhdHeightChoice();
+  host.append(playerOption(
+    active && choice === "auto" ? `Ultra HD Auto · ${uhdLabel(playing)}` : "Ultra HD Auto · 2160p or 1620p",
+    active && choice === "auto",
+    choose("auto"),
+  ));
+  heights.forEach((height) => {
+    host.append(playerOption(uhdLabel(height), active && choice === String(height), choose(String(height))));
+  });
+}
+
+function resumePosition() {
+  const video = document.getElementById("player-video");
+  return !state.playerLive && video && video.currentTime > 5 ? video.currentTime : 0;
+}
+
+function currentTrackLanguages() {
+  try {
+    if (state.hlsPlayer) {
+      const hls = state.hlsPlayer;
+      return {
+        audioLanguage: hls.audioTracks[hls.audioTrack]?.lang || "",
+        subtitleLanguage: hls.subtitleTrack >= 0 ? hls.subtitleTracks[hls.subtitleTrack]?.lang || "" : "",
+      };
+    }
+    const player = state.dashPlayer;
+    if (player) {
+      const audio = player.getCurrentTrackFor("audio");
+      const text = player.isTextEnabled?.() ? state.textTracks[player.getCurrentTextTrackIndex?.()] : null;
+      return { audioLanguage: audio?.lang || "", subtitleLanguage: text?.lang || "" };
+    }
+  } catch (_error) {}
+  return { audioLanguage: "", subtitleLanguage: "" };
+}
+
+function restartPlayback(options) {
+  if (!state.selectedItem) return;
+  startPlayback(state.selectedItem, { ...currentTrackLanguages(), ...options })
+    .catch((error) => showPlayerError(error.message || "Could not start F1 TV playback."));
+}
+
+function leaveUhd(height = 0) {
+  rememberHdQuality(height);
+  restartPlayback({ resumeAt: resumePosition() });
+}
+
+// The viewer's last audio, subtitle and quality choices. Every programme starts
+// with them (when the feed offers that language or quality), in HD and in 4K.
+// With no subtitle choice yet, subtitles start off (the existing default).
+const AUDIO_LANGUAGE_KEY = "raceWeekendAudioLanguage";
+const SUBTITLE_LANGUAGE_KEY = "raceWeekendSubtitleLanguage";
+const HD_QUALITY_KEY = "raceWeekendVideoQuality";
+
+function rememberAudioLanguage(code) {
+  const language = languageBase(code);
+  if (language) writeSetting(AUDIO_LANGUAGE_KEY, language);
+}
+
+function rememberedAudioLanguage() {
+  return readSetting(AUDIO_LANGUAGE_KEY) || "";
+}
+
+function rememberSubtitleLanguage(code) {
+  // A track without a language tag cannot be found again; keep the last choice.
+  const language = languageBase(code);
+  if (language) writeSetting(SUBTITLE_LANGUAGE_KEY, language);
+}
+
+function rememberSubtitlesOff() {
+  writeSetting(SUBTITLE_LANGUAGE_KEY, "off");
+}
+
+function rememberedSubtitleLanguage() {
+  const value = readSetting(SUBTITLE_LANGUAGE_KEY) || "";
+  return value === "off" ? "" : value;
+}
+
+// 0 = Auto, otherwise a fixed height. Choosing an HD quality also leaves 4K.
+function rememberHdQuality(height) {
+  setUhdPreferred(false);
+  writeSetting(HD_QUALITY_KEY, height ? String(height) : null);
+}
+
+function rememberedHdQuality() {
+  return Number.parseInt(readSetting(HD_QUALITY_KEY) || "", 10) || 0;
+}
+
+function fallBackFromUhd(message) {
+  if (!state.hlsPlayer) return;
+  showToast(message || "Ultra HD playback stopped. Switching to HD.");
+  restartPlayback({ resumeAt: resumePosition(), skipUhd: true });
+}
+
+function freshPlayerVideo() {
+  // A clean <video>: MediaKeys attached by one engine are not handed to the other.
+  const old = document.getElementById("player-video");
+  const video = old.cloneNode(false);
+  video.removeAttribute("src");
+  // cloneNode copies attributes, not the live mute/volume state.
+  video.muted = old.muted;
+  video.volume = old.volume;
+  video.addEventListener("contextmenu", (event) => {
+    event.preventDefault();
+    openPlayerOptions();
+  });
+  old.parentNode.replaceChild(video, old);
+  return video;
+}
+
+function hlsTrackLabel(track, index, fallback) {
+  const name = String(track.name || "").trim();
+  const language = subtitleLanguageName(languageBase(track.lang)) || languageName(languageBase(track.lang));
+  const detail = [/^[a-z]{2,3}(?:[_-][a-z0-9]+)*$/i.test(name) ? "" : name, language]
+    .filter(Boolean)
+    .filter((part, i, all) => all.indexOf(part) === i);
+  return detail.length ? detail.join(" · ") : `${fallback} ${index + 1}`;
+}
+
+function renderHlsAudio(host) {
+  const hls = state.hlsPlayer;
+  const tracks = hls.audioTracks || [];
+  if (!tracks.length) {
+    host.append(element("p", "player-options-note", "Audio tracks appear when playback starts."));
+    return;
+  }
+  tracks.forEach((track, index) => {
+    host.append(playerOption(hlsTrackLabel(track, index, "Audio"), index === hls.audioTrack, () => {
+      hls.audioTrack = index;
+      rememberAudioLanguage(track.lang);
+      window.setTimeout(() => {
+        renderPlayerAudio();
+        host.querySelector(".player-option.is-selected")?.focus();
+      }, 150);
+    }));
+  });
+}
+
+function renderHlsSubtitles(host) {
+  const hls = state.hlsPlayer;
+  const tracks = hls.subtitleTracks || [];
+  if (!tracks.length) {
+    host.append(element("p", "player-options-note", "No subtitles are available for this feed."));
+    return;
+  }
+  const choose = (index) => () => {
+    state.subtitleChoiceMade = true;
+    state.subtitleManual = true;
+    hls.subtitleDisplay = true;
+    hls.subtitleTrack = index;
+    if (index >= 0) rememberSubtitleLanguage(tracks[index].lang);
+    else rememberSubtitlesOff();
+    window.setTimeout(() => {
+      renderPlayerSubtitles();
+      host.querySelector(".player-option.is-selected")?.focus();
+    }, 150);
+  };
+  host.append(playerOption("Off", hls.subtitleTrack < 0, choose(-1)));
+  tracks.forEach((track, index) => {
+    host.append(playerOption(hlsTrackLabel(track, index, "Subtitle"), index === hls.subtitleTrack, choose(index)));
+  });
+}
+
+async function startUhdPlayback(uhd, { resumeAt = 0, audioLanguage = "", subtitleLanguage = "", playbackSeq = state.playbackSeq } = {}) {
+  const Hls = await loadHlsEngine();
+  if (playbackSeq !== state.playbackSeq || state.currentView !== "player") return;
+  // On rooted webOS 4 TVs, free the video decoder for 2160p (see the notes above).
+  if (uhdUnconfirmed() && uhdHeightChoice() !== "1620" && uhd.heights.includes(UHD_HEIGHT)
+    && (await closeBackgroundLiveTv())) {
+    state.uhdAutoDowngraded = false;
+    showToast("Closed Live TV in the background so 2160p can play smoothly.");
+    if (playbackSeq !== state.playbackSeq || state.currentView !== "player") return;
+  }
+  const height = uhdPlaybackHeight(uhd.heights);
+  const watchSmoothness = uhdUnconfirmed() && uhdHeightChoice() === "auto" && height === UHD_HEIGHT
+    && uhd.heights.some((entry) => entry < height);
+  const status = document.getElementById("player-status-text");
+  const video = freshPlayerVideo();
+  state.lastEngine = "hls";
+  const licenseHeaders = {
+    ...state.session.headers(),
+    entitlementtoken: uhd.entitlementToken,
+    "x-f1-device-info": uhd.device,
+  };
+  // Same as the HD license request (auth.js) when the 3.0 response carries one.
+  if (uhd.drmToken) licenseHeaders.customdata = uhd.drmToken;
+  const masterOptions = { audioLanguage, subtitleLanguage, maxHeight: height };
+  class UhdLoader extends Hls.DefaultConfig.loader {
+    load(context, config, callbacks) {
+      if (context.type === "manifest") {
+        const done = callbacks.onSuccess;
+        callbacks = {
+          ...callbacks,
+          onSuccess: (response, stats, ctx, details) => {
+            response.data = prepareUhdMaster(response.data, masterOptions);
+            done(response, stats, ctx, details);
+          },
+        };
+      }
+      return super.load(context, config, callbacks);
+    }
+  }
+  const hls = new Hls({
+    debug: false,
+    enableWorker: false,
+    autoStartLoad: false,
+    emeEnabled: true,
+    loader: UhdLoader,
+    drmSystems: { "com.widevine.alpha": { licenseUrl: uhd.licenseUrl } },
+    drmSystemOptions: { audioRobustness: "HW_SECURE_CRYPTO", videoRobustness: "HW_SECURE_DECODE" },
+    licenseXhrSetup: (xhr) => {
+      Object.keys(licenseHeaders).forEach((key) => xhr.setRequestHeader(key, licenseHeaders[key]));
+    },
+    maxBufferLength: 20,
+    backBufferLength: 10,
+  });
+  state.hlsPlayer = hls;
+  state.uhdPlayingHeight = height;
+  hls.on(Hls.Events.MANIFEST_PARSED, () => {
+    const level = hls.levels.findIndex((entry) => entry.height === height);
+    if (level < 0) {
+      fallBackFromUhd("This video has no Ultra HD rendition. Switching to HD.");
+      return;
+    }
+    hls.startLevel = level;
+    hls.loadLevel = level;
+    hls.startLoad(resumeAt > 0 ? resumeAt : -1);
+  });
+  hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, () => {
+    if (state.playerPanel === "language") renderPlayerAudio();
+  });
+  hls.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, () => {
+    if (state.playerPanel === "language") renderPlayerSubtitles();
+  });
+  hls.once(Hls.Events.FRAG_BUFFERED, () => {
+    video.play().catch(() => {});
+  });
+  hls.on(Hls.Events.ERROR, (_event, data) => {
+    if (data?.fatal) fallBackFromUhd();
+  });
+  video.onplaying = () => {
+    status.textContent = `Playing on F1 TV · ${uhdLabel(height)}`;
+    if (watchSmoothness && !state.uhdWatchTimer && state.hlsPlayer === hls) watchUhdSmoothness(video, hls);
+  };
+  video.onwaiting = () => { status.textContent = "Buffering…"; };
+  video.onplay = () => { document.getElementById("player-toggle").textContent = "Pause"; };
+  video.onpause = () => { document.getElementById("player-toggle").textContent = "Play"; };
+  video.ontimeupdate = updateTimeline;
+  video.onprogress = updateTimeline;
+  status.textContent = `Starting ${uhdLabel(height)}…`;
+  hls.attachMedia(video);
+  hls.loadSource(uhd.url);
+  if (state.playerPanel === "language") {
+    renderPlayerQuality();
+    renderPlayerAudio();
+    renderPlayerSubtitles();
+  } else if (!state.playerPanel) {
+    video.focus();
+  }
+  window.clearInterval(state.timelineTimer);
+  state.timelineTimer = window.setInterval(updateTimeline, 1000);
+  state.playerTimer = window.setTimeout(() => hidePlayerChrome(), 5000);
 }
 
 function playerPanelElement(kind) {
@@ -841,7 +1622,13 @@ function showPlayerPanel(kind, { pushHistory = true, focus = true } = {}) {
   const panel = playerPanelElement(kind);
   if (!panel) return;
   if (kind === "sources") renderPlayerSources();
-  else { renderPlayerQuality(); renderPlayerAudio(); renderPlayerSubtitles(); }
+  else {
+    renderPlayerQuality();
+    renderPlayerAudio();
+    renderPlayerSubtitles();
+    // Look for 4K only when the viewer opens the quality menu.
+    if (!state.hlsPlayer) refreshUhdAvailability();
+  }
   showPlayerChrome();
   if (pushHistory && state.playerPanel !== kind) {
     const historyState = { f1tv: true, screen: "player", panel: kind };
@@ -875,12 +1662,17 @@ function openPlayerOptions() {
 
 function handleAppPopState(event) {
   const destination = event.state;
+  if (!document.getElementById("update-dialog").hidden && destination?.modal !== "update") closeUpdateDialog({ fromHistory: true });
   if (!document.getElementById("sign-out-dialog").hidden && destination?.modal !== "logout") closeSignOutConfirmation({ fromHistory: true });
   if (!document.getElementById("sign-in-dialog").hidden && destination?.modal !== "signin") closeSignIn({ fromHistory: true });
   if (!destination?.f1tv) return;
   const previousView = state.currentView;
   const previousPanel = state.playerPanel;
-  if (previousView === "player" && destination.screen !== "player") stopPlayback();
+  if (previousView === "player" && destination.screen !== "player") {
+    // Invalidate a start that is still awaiting the network (4K check, PLAY).
+    state.playbackSeq += 1;
+    stopPlayback();
+  }
   setView(destination.screen || "home", { pushHistory: false });
   if (destination.screen === "player" && destination.panel) {
     showPlayerPanel(destination.panel, { pushHistory: false });
@@ -957,6 +1749,278 @@ function playSelected() {
     return;
   }
   startPlayback(item).catch((error) => showToast(error.message || "F1 TV could not start playback."));
+}
+
+// ---------------------------------------------------------------------------
+// App updates
+//
+// Race Weekend checks this repository's GitHub releases and offers a newer
+// version when the project publishes one. Automatic checks run at most every
+// 12 hours on launch and can be turned off in the updates dialog (Account →
+// App updates). On TVs with the webOS Homebrew Channel (rooted TVs), "Update
+// now" asks its service to download the release .ipk, verify the SHA-256 that
+// GitHub reports for the asset, and install it; webOS closes the app while it
+// is replaced. Without the Homebrew Channel the dialog shows the release page
+// as a QR code so the package can be installed with Dev Manager or ares-install.
+// ---------------------------------------------------------------------------
+const UPDATE_REPOSITORY = "Ravboni/race-weekend";
+const UPDATE_PACKAGE_PREFIX = "com.ravboni.raceweekend_";
+const UPDATE_AUTO_KEY = "raceWeekendAutoUpdateChecks";
+const UPDATE_SKIP_KEY = "raceWeekendSkippedVersion";
+const UPDATE_LAST_CHECK_KEY = "raceWeekendLastUpdateCheck";
+const UPDATE_CHECK_INTERVAL = 12 * 60 * 60 * 1000;
+const HOMEBREW_SERVICE = "luna://org.webosbrew.hbchannel.service";
+// scripts/transpile.js replaces this placeholder with appinfo.json's version
+// when packaging. The app cannot read appinfo.json itself: the CSP limits
+// connect-src to network origins, and Luna's getAppInfo is denied to apps.
+const APP_VERSION = "__RACE_WEEKEND_VERSION__";
+
+function appVersion() {
+  return Promise.resolve(/^\d+\.\d+/.test(APP_VERSION) ? APP_VERSION : "");
+}
+
+function readSetting(key) {
+  try { return window.localStorage.getItem(key); } catch (_error) { return null; }
+}
+
+function writeSetting(key, value) {
+  try {
+    if (value === null) window.localStorage.removeItem(key);
+    else window.localStorage.setItem(key, value);
+  } catch (_error) {}
+}
+
+function autoUpdateChecksEnabled() {
+  return readSetting(UPDATE_AUTO_KEY) !== "off";
+}
+
+function versionParts(version) {
+  return String(version || "").replace(/^v/i, "").split(/[.+-]/).slice(0, 3).map((part) => Number.parseInt(part, 10) || 0);
+}
+
+function compareVersions(a, b) {
+  const left = versionParts(a);
+  const right = versionParts(b);
+  for (let index = 0; index < 3; index += 1) {
+    if ((left[index] || 0) !== (right[index] || 0)) return (left[index] || 0) - (right[index] || 0);
+  }
+  return 0;
+}
+
+// Picks the newest published release and decides whether it replaces the
+// installed version. Release order is decided by publication date when the
+// installed version is itself a published release, because the project's
+// version numbers have not always increased (v0.16.29 was followed by v0.2.0).
+function newerRelease(releases, installedVersion) {
+  const published = releases
+    .filter((release) => release && !release.draft && !release.prerelease && release.tag_name)
+    .sort((a, b) => Date.parse(b.published_at) - Date.parse(a.published_at));
+  const latest = published[0];
+  if (!latest || !installedVersion) return null;
+  const latestVersion = latest.tag_name.replace(/^v/i, "");
+  if (latestVersion === installedVersion) return null;
+  const installed = published.find((release) => release.tag_name.replace(/^v/i, "") === installedVersion);
+  const newer = installed
+    ? Date.parse(latest.published_at) > Date.parse(installed.published_at)
+    : compareVersions(latestVersion, installedVersion) > 0;
+  if (!newer) return null;
+  const asset = (latest.assets || []).find((entry) => /\.ipk$/i.test(entry.name) && entry.name.indexOf(UPDATE_PACKAGE_PREFIX) === 0);
+  const digest = /^sha256:([a-f0-9]{64})$/i.exec(asset?.digest || "");
+  const packageUrl = /^https:\/\/github\.com\//.test(asset?.browser_download_url || "") ? asset.browser_download_url : "";
+  return {
+    version: latestVersion,
+    page: /^https:\/\/github\.com\//.test(latest.html_url || "") ? latest.html_url : `https://github.com/${UPDATE_REPOSITORY}/releases/latest`,
+    packageUrl,
+    sha256: digest ? digest[1].toLowerCase() : "",
+  };
+}
+
+async function findUpdate() {
+  const [installedVersion, response] = await Promise.all([
+    appVersion(),
+    fetch(`https://api.github.com/repos/${UPDATE_REPOSITORY}/releases?per_page=20`, {
+      credentials: "omit",
+      headers: { accept: "application/vnd.github+json" },
+    }),
+  ]);
+  if (!response.ok) throw new Error(`GitHub returned ${response.status}`);
+  const releases = await response.json();
+  writeSetting(UPDATE_LAST_CHECK_KEY, String(Date.now()));
+  return { installedVersion, update: newerRelease(Array.isArray(releases) ? releases : [], installedVersion) };
+}
+
+function homebrewCall(method, params, onMessage) {
+  const bridge = new window.PalmServiceBridge();
+  bridge.onservicecallback = (text) => {
+    let message = {};
+    try { message = JSON.parse(text); } catch (_error) {}
+    onMessage(message);
+  };
+  bridge.call(`${HOMEBREW_SERVICE}/${method}`, JSON.stringify(params || {}));
+  return bridge;
+}
+
+function homebrewInstallerAvailable() {
+  return new Promise((resolve) => {
+    if (typeof window.PalmServiceBridge !== "function") { resolve(false); return; }
+    const timer = window.setTimeout(() => resolve(false), 3000);
+    try {
+      state.homebrewProbe = homebrewCall("checkRoot", {}, (message) => {
+        window.clearTimeout(timer);
+        // Any reply without an error code means the service is installed and reachable.
+        resolve(!message.errorCode && message.returnValue !== undefined);
+      });
+    } catch (_error) {
+      window.clearTimeout(timer);
+      resolve(false);
+    }
+  });
+}
+
+function updateDialogElements() {
+  return {
+    dialog: document.getElementById("update-dialog"),
+    title: document.getElementById("update-title"),
+    detail: document.getElementById("update-detail"),
+    qr: document.getElementById("update-qr"),
+    install: document.getElementById("update-install"),
+    skip: document.getElementById("update-skip"),
+    close: document.getElementById("update-close"),
+    auto: document.getElementById("update-auto"),
+  };
+}
+
+function drawQrCode(canvas, text) {
+  if (typeof window.qrcode !== "function") return false;
+  const qr = window.qrcode(0, "M");
+  qr.addData(text);
+  qr.make();
+  const context = canvas.getContext("2d");
+  const count = qr.getModuleCount();
+  const cell = canvas.width / (count + 8);
+  context.fillStyle = "#fff";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.fillStyle = "#000";
+  for (let row = 0; row < count; row += 1) {
+    for (let column = 0; column < count; column += 1) {
+      if (qr.isDark(row, column)) context.fillRect(Math.ceil((column + 4) * cell), Math.ceil((row + 4) * cell), Math.ceil(cell), Math.ceil(cell));
+    }
+  }
+  return true;
+}
+
+function renderUpdateDialog({ title, detail = "", update = null, canInstall = false, busy = false }) {
+  const ui = updateDialogElements();
+  ui.title.textContent = title;
+  ui.detail.textContent = detail;
+  ui.install.hidden = !update || !canInstall || !update.packageUrl || !update.sha256;
+  ui.install.disabled = busy;
+  ui.skip.hidden = !update || busy;
+  ui.close.textContent = update && !busy ? "Later" : "Close";
+  ui.auto.textContent = `Automatic update checks: ${autoUpdateChecksEnabled() ? "On" : "Off"}`;
+  ui.qr.hidden = !update || canInstall || !drawQrCode(ui.qr, update.page);
+}
+
+function openUpdateDialog() {
+  const { dialog, install, close } = updateDialogElements();
+  if (!dialog.hidden) return;
+  if (state.currentView === "player") {
+    // Never cover playback; show the offer when the viewer leaves the player.
+    state.pendingUpdateDialog = true;
+    return;
+  }
+  state.updateReturnFocus = document.activeElement;
+  // Like the account dialogs: a history entry, so Back and popstate close it.
+  const current = window.history.state?.f1tv ? window.history.state : { f1tv: true, screen: state.currentView };
+  window.history.pushState({ ...current, modal: "update" }, "", window.location.href);
+  dialog.hidden = false;
+  (install.hidden ? close : install).focus();
+}
+
+function closeUpdateDialog({ fromHistory = false } = {}) {
+  const { dialog } = updateDialogElements();
+  // A check still running must not reopen a dialog the viewer dismissed.
+  state.updateCheckSeq += 1;
+  state.pendingUpdateDialog = false;
+  if (dialog.hidden) return;
+  if (!fromHistory && window.history.state?.f1tv && window.history.state.modal === "update") {
+    const { modal, ...pageState } = window.history.state;
+    window.history.replaceState(pageState, "", window.location.href);
+  }
+  dialog.hidden = true;
+  const returnFocus = state.updateReturnFocus;
+  state.updateReturnFocus = null;
+  if (returnFocus && !returnFocus.closest("[hidden]") && returnFocus.getClientRects().length) returnFocus.focus();
+  else if (!fromHistory) focusDefault(state.currentView);
+}
+
+function showUpdateResult(seq, interactive, view) {
+  // Only the check the viewer is still waiting for may change the dialog.
+  if (seq !== state.updateCheckSeq) return;
+  renderUpdateDialog(view);
+  const ui = updateDialogElements();
+  if (ui.dialog.hidden) openUpdateDialog();
+  else (ui.install.hidden ? ui.close : ui.install).focus();
+}
+
+async function checkForUpdates({ interactive = false } = {}) {
+  if (state.updateInstalling) {
+    if (interactive) openUpdateDialog();
+    return;
+  }
+  state.updateCheckSeq += 1;
+  const seq = state.updateCheckSeq;
+  if (interactive) {
+    renderUpdateDialog({ title: "Checking for updates…" });
+    openUpdateDialog();
+  }
+  try {
+    const [{ installedVersion, update }, canInstall] = await Promise.all([findUpdate(), homebrewInstallerAvailable()]);
+    if (seq !== state.updateCheckSeq) return;
+    state.update = update ? { ...update, canInstall } : null;
+    if (!update) {
+      if (interactive) showUpdateResult(seq, interactive, { title: "Race Weekend is up to date", detail: `Version ${installedVersion || "unknown"} is the latest release.` });
+      return;
+    }
+    if (!interactive && readSetting(UPDATE_SKIP_KEY) === update.version) return;
+    const how = canInstall
+      ? "Update now downloads it from GitHub, checks its SHA-256, and installs it with the Homebrew Channel. Race Weekend closes while it is replaced; open it again afterwards."
+      : "Scan the code to open the release page, then install the .ipk with webOS Dev Manager or ares-install.";
+    showUpdateResult(seq, interactive, { title: `Race Weekend ${update.version} is available`, detail: `You have ${installedVersion}. ${how}`, update, canInstall });
+  } catch (_error) {
+    if (interactive) showUpdateResult(seq, interactive, { title: "Could not check for updates", detail: "Check the TV's internet connection and try again later." });
+  }
+}
+
+function installUpdate() {
+  const update = state.update;
+  if (state.updateInstalling || !update?.canInstall || !update.packageUrl || !update.sha256) return;
+  state.updateInstalling = true;
+  renderUpdateDialog({ title: `Installing Race Weekend ${update.version}…`, detail: "Starting the download…", update, canInstall: true, busy: true });
+  state.updateInstall = homebrewCall("install", { ipkUrl: update.packageUrl, ipkHash: update.sha256, subscribe: true }, (message) => {
+    const { detail } = updateDialogElements();
+    if (message.returnValue === false || message.errorText) {
+      state.updateInstalling = false;
+      renderUpdateDialog({ title: "The update could not be installed", detail: message.errorText || "The Homebrew Channel reported an error.", update, canInstall: true });
+      return;
+    }
+    const progress = Number.isFinite(message.progress) ? ` ${Math.round(message.progress)}%` : "";
+    if (message.statusText) detail.textContent = `${message.statusText}${progress}`;
+    if (message.finished) detail.textContent = "Installed. Open Race Weekend again to use the new version.";
+  });
+}
+
+function toggleAutoUpdateChecks() {
+  writeSetting(UPDATE_AUTO_KEY, autoUpdateChecksEnabled() ? "off" : null);
+  updateDialogElements().auto.textContent = `Automatic update checks: ${autoUpdateChecksEnabled() ? "On" : "Off"}`;
+}
+
+function scheduleAutomaticUpdateCheck() {
+  if (!autoUpdateChecksEnabled()) return;
+  const last = Number(readSetting(UPDATE_LAST_CHECK_KEY)) || 0;
+  if (Date.now() - last < UPDATE_CHECK_INTERVAL) return;
+  // Let the home feed load first; the check is a single small GitHub API request.
+  window.setTimeout(() => checkForUpdates(), 8000);
 }
 
 function setAccountLabel() {
@@ -1084,7 +2148,14 @@ async function beginSignIn() {
   }
 }
 
-async function startPlayback(item) {
+async function startPlayback(item, options = {}) {
+  state.playbackSeq += 1;
+  const playbackSeq = state.playbackSeq;
+  if (state.hlsPlayer || state.lastEngine === "hls") {
+    stopPlayback();
+    freshPlayerVideo();
+  }
+  state.lastEngine = "dash";
   const video = document.getElementById("player-video");
   const status = document.getElementById("player-status-text");
   const title = item.metadata?.titleBrief || item.metadata?.title || "F1 TV";
@@ -1099,9 +2170,27 @@ async function startPlayback(item) {
   status.textContent = "Requesting your F1 TV stream…";
   setView("player");
   showPlayerChrome();
-  state.subtitleChoiceMade = false;
+  // What was playing before an HD/4K switch, else the viewer's last choices.
+  const audioLanguage = options.audioLanguage || rememberedAudioLanguage();
+  const subtitleLanguage = options.subtitleLanguage || rememberedSubtitleLanguage();
+  const hdQuality = rememberedHdQuality();
+  state.subtitleChoiceMade = Boolean(subtitleLanguage);
+  state.subtitleManual = false;
   try {
+    if (!options.skipUhd && uhdPreferred() && (await tvSupportsUhd())) {
+      status.textContent = "Checking 4K availability…";
+      // Start from a fresh PLAY response; its playlist URLs are tokenized.
+      const uhd = await uhdStreamFor(contentId, state.selectedChannelId, { maxAge: 60 * 1000 });
+      if (playbackSeq !== state.playbackSeq || state.currentView !== "player") return;
+      if (uhd) {
+        await startUhdPlayback(uhd, { ...options, audioLanguage, subtitleLanguage, playbackSeq });
+        return;
+      }
+      showToast("Ultra HD is not available for this video. Playing HD.");
+      status.textContent = "Requesting your F1 TV stream…";
+    }
     const stream = await state.session.play(contentId, state.selectedChannelId);
+    if (playbackSeq !== state.playbackSeq || state.currentView !== "player") return;
     if (!window.dashjs?.MediaPlayer) throw new Error("The TV player engine did not load.");
     const player = window.dashjs.MediaPlayer().create();
     state.dashPlayer = player;
@@ -1123,11 +2212,40 @@ async function startPlayback(item) {
         },
       });
     }
+    // Subtitles start off unless the viewer chose a language; that language is
+    // turned on once, as soon as the feed lists it.
+    let subtitlesApplied = false;
+    const applySubtitleLanguage = () => {
+      if (!subtitleLanguage) {
+        if (!state.subtitleChoiceMade) disableDefaultSubtitles(player);
+        return;
+      }
+      if (subtitlesApplied || state.subtitleManual) return;
+      const index = state.textTracks.findIndex((track) => languageBase(track.lang) === languageBase(subtitleLanguage));
+      if (index < 0) {
+        disableDefaultSubtitles(player);
+        return;
+      }
+      subtitlesApplied = true;
+      try { player.enableText(true); player.setTextTrack(index); } catch (_error) {}
+    };
     player.on(window.dashjs.MediaPlayer.events.STREAM_INITIALIZED, () => {
       status.textContent = "Playing on F1 TV";
       try { state.audioTracks = player.getTracksFor("audio") || []; } catch (_error) { state.audioTracks = []; }
       try { state.textTracks = player.getTracksFor("text") || []; } catch (_error) { state.textTracks = []; }
-      if (!state.subtitleChoiceMade) disableDefaultSubtitles(player);
+      if (audioLanguage) {
+        const audio = state.audioTracks.find((track) => languageBase(track.lang) === languageBase(audioLanguage));
+        try { if (audio) player.setCurrentTrack(audio); } catch (_error) {}
+      }
+      if (hdQuality) {
+        // A remembered fixed height: the closest rung not above it.
+        const rungs = videoQualityList(player);
+        const rung = rungs.filter((info) => info.height <= hdQuality).pop() || rungs[0];
+        try {
+          if (rung) { setAutoQuality(player, false); player.setQualityFor("video", rung.qualityIndex, true); }
+        } catch (_error) {}
+      }
+      applySubtitleLanguage();
       renderPlayerQuality();
       renderPlayerAudio();
       renderPlayerSubtitles();
@@ -1137,7 +2255,7 @@ async function startPlayback(item) {
     const textTrackAdded = window.dashjs.MediaPlayer.events.TEXT_TRACK_ADDED;
     if (textTrackAdded) player.on(textTrackAdded, () => {
       try { state.textTracks = player.getTracksFor("text") || []; } catch (_error) { state.textTracks = []; }
-      if (!state.subtitleChoiceMade) disableDefaultSubtitles(player);
+      applySubtitleLanguage();
       renderPlayerSubtitles();
     });
     player.on(window.dashjs.MediaPlayer.events.PLAYBACK_ERROR, () => {
@@ -1149,7 +2267,8 @@ async function startPlayback(item) {
     video.onpause = () => { document.getElementById("player-toggle").textContent = "Play"; };
     video.ontimeupdate = updateTimeline;
     video.onprogress = updateTimeline;
-    player.initialize(video, stream.manifest, true);
+    // Switching from 4K resumes at the same position (VOD only).
+    player.initialize(video, stream.manifest, true, options.resumeAt > 0 ? options.resumeAt : NaN);
     const ttmlRenderingDiv = document.getElementById("player-ttml-rendering");
     if (ttmlRenderingDiv) {
       try { player.attachTTMLRenderingDiv(ttmlRenderingDiv); }
@@ -1174,8 +2293,14 @@ function showPlayerError(message) {
 function stopPlayback() {
   window.clearTimeout(state.playerTimer);
   window.clearInterval(state.timelineTimer);
+  window.clearInterval(state.uhdWatchTimer);
+  state.uhdWatchTimer = null;
   state.playerTimer = null;
   state.timelineTimer = null;
+  if (state.hlsPlayer) {
+    try { state.hlsPlayer.destroy(); } catch (_error) {}
+    state.hlsPlayer = null;
+  }
   if (state.dashPlayer) {
     try { state.dashPlayer.reset(); } catch (_error) {}
     state.dashPlayer = null;
@@ -1292,6 +2417,8 @@ function goLive() {
 }
 
 function focusScope() {
+  const updateDialog = document.getElementById("update-dialog");
+  if (!updateDialog.hidden) return updateDialog;
   const signOutDialog = document.getElementById("sign-out-dialog");
   if (!signOutDialog.hidden) return signOutDialog;
   const signInDialog = document.getElementById("sign-in-dialog");
@@ -1449,6 +2576,15 @@ function onRemoteKey(event) {
     37: "ArrowLeft", 38: "ArrowUp", 39: "ArrowRight", 40: "ArrowDown",
   }[event.keyCode] || ({ Left: "ArrowLeft", Up: "ArrowUp", Right: "ArrowRight", Down: "ArrowDown" }[event.key] || event.key));
   const editingText = document.activeElement.matches?.("input:not([type='range']), textarea, [contenteditable='true']");
+  if (!document.getElementById("update-dialog").hidden) {
+    if (key === "Escape" || key === "Back" || (key === "Backspace" && !editingText) || event.keyCode === 461) {
+      event.preventDefault();
+      closeUpdateDialog();
+    } else {
+      moveFocus(event, key);
+    }
+    return;
+  }
   if (!document.getElementById("sign-out-dialog").hidden) {
     if (key === "Escape" || key === "Back" || (key === "Backspace" && !editingText) || event.keyCode === 461) {
       event.preventDefault();
@@ -1575,6 +2711,26 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("sign-in-cancel").addEventListener("click", closeSignIn);
   document.getElementById("sign-out-cancel").addEventListener("click", () => closeSignOutConfirmation());
   document.getElementById("sign-out-confirm").addEventListener("click", confirmSignOut);
+  document.getElementById("sign-out-updates").addEventListener("click", () => {
+    closeSignOutConfirmation();
+    checkForUpdates({ interactive: true });
+  });
+  document.getElementById("sign-in-updates").addEventListener("click", () => {
+    // Signed-out viewers reach the updates dialog from the sign-in dialog.
+    closeSignIn({ navigate: false });
+    checkForUpdates({ interactive: true });
+  });
+  document.getElementById("update-install").addEventListener("click", installUpdate);
+  document.getElementById("update-skip").addEventListener("click", () => {
+    if (state.update) writeSetting(UPDATE_SKIP_KEY, state.update.version);
+    closeUpdateDialog();
+  });
+  document.getElementById("update-close").addEventListener("click", closeUpdateDialog);
+  document.getElementById("update-auto").addEventListener("click", toggleAutoUpdateChecks);
+  appVersion().then((version) => {
+    const label = document.getElementById("sign-out-version");
+    if (label && version) label.textContent = `Race Weekend ${version}`;
+  });
   document.getElementById("account-button").addEventListener("click", () => {
     if (state.session?.signedIn) {
       openSignOutConfirmation();
@@ -1585,4 +2741,5 @@ document.addEventListener("DOMContentLoaded", () => {
   state.session = new window.F1Session();
   state.session.restore().then(setAccountLabel).catch(() => setAccountLabel());
   loadHome();
+  scheduleAutomaticUpdateCheck();
 });

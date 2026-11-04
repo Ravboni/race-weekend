@@ -65,6 +65,7 @@ The attestation proves which repository workflow produced the package and binds 
 - Play entitled live sessions and replays when F1 provides a stream compatible with the TV.
 - Choose a live feed independently from the audio language and subtitles offered for that feed.
 - Start each stream in adaptive Auto quality with subtitles Off; select a specific available quality or subtitle track during playback.
+- Play Ultra HD (2160p or 2880x1620 HDR) on qualifying 4K TVs when F1 offers it for the programme. See [Ultra HD playback](docs/ULTRA-HD.md).
 - Navigate with the TV remote, including playback controls and D-pad seeking.
 - Show a TV-scale interface with large cards, Roboto typography, and clear focus states.
 
@@ -88,6 +89,7 @@ The app requests streams allowed by the signed-in account and uses webOS playbac
 - Playback compatibility depends on the TV model and webOS firmware. The configurations listed in [Tested TV compatibility](#tested-tv-compatibility) have been checked or reported; other combinations are unverified.
 - Older webOS browsers use a capability-detected compatibility path for layout, JavaScript APIs, account pairing, and remote navigation. This path was verified on the OLED55E9PLA (Chromium 53).
 - **Quality selection:** Version v0.2.0 starts every TV in adaptive Auto and does not impose the former 540p bitrate ceiling. Available manual quality choices apply only to the current stream. Higher-than-540p playback was confirmed on the rooted OLED55E9PLA test setup; unmodified TVs with older decoders may still have hardware or firmware limits.
+- **Ultra HD and Live TV (webOS 4):** On the OLED C9 (webOS 4.10), 2160p50 plays at 50 fps only while the Live TV app is closed. webOS 4 keeps Live TV running behind apps opened over it; its tuner decoder then shares the video decoder, and 2160p drops to ~43 fps. On rooted TVs with the Homebrew Channel, Race Weekend closes a background Live TV before playing 2160p. Elsewhere, the default **Ultra HD Auto** detects the drop and continues at 1620p HDR. Fixed 2160p and 1620p choices are also available. Details: [Ultra HD playback](docs/ULTRA-HD.md#findings-oled-c9-webos-4x-and-live-tv).
 - **Subtitles:** New streams start with subtitles Off. F1 subtitle tracks remain selectable, and fragmented TTML rendering was confirmed in the C2 test build.
 - **webOS 6:** The bundled bridge restored catalogue and artwork loading on the LG 43UP7500PSF test unit. Playback on that model has not been verified.
 - Release v0.2.0 includes the playback defaults and subtitle updates described above.
