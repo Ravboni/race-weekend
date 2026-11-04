@@ -124,3 +124,4 @@
 .legacy-webos .player-controls .button + .button { margin-left: 24px; }
 .legacy-webos .channel-option + .channel-option { margin-left: 16px; }
 .legacy-webos .sign-out-actions .button + .button { margin-left: 32px; }
+.legacy-webos .sign-out-app .button { margin-left: 24px; }

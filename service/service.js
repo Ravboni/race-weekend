@@ -37,9 +37,10 @@ var APP_ORIGIN = "file://com.ravboni.raceweekend-webos";
 var TOKEN_PARAM = "__rwv_session";
 
 // host -> allowed path prefixes. Mirrors the documented catalog/auth/image
-// endpoints the app needs; everything else is refused.
+// endpoints the app needs (3.0 is the PLAY API that serves the 4K profile);
+// everything else is refused.
 var ALLOWED = {
-  "f1tv.formula1.com": /^\/(?:[124]\.0\/|image-resizer\/)/,
+  "f1tv.formula1.com": /^\/(?:[1234]\.0\/|image-resizer\/)/,
   "api.formula1.com": /^\/static\/jwks\.json$/,
   "id.formula1.com": /^\/as\/(?:device_authorization|token)$/
 };
@@ -73,7 +74,7 @@ function addCorsHeaders(req, res) {
   if (origin === APP_ORIGIN) {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Vary", "Origin");
-    res.setHeader("Access-Control-Allow-Headers", "accept, content-type, ascendontoken, entitlementtoken, customdata, range");
+    res.setHeader("Access-Control-Allow-Headers", "accept, content-type, ascendontoken, entitlementtoken, customdata, range, x-f1-device-info, x-f1-override-video-stream");
     res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, POST, OPTIONS");
   }
   res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
@@ -96,7 +97,7 @@ function createProxy() {
       var requestedMethod = req.headers["access-control-request-method"];
       if (["GET", "HEAD", "POST"].indexOf(requestedMethod) === -1) { res.writeHead(403); res.end(); return; }
       var requestedHeaders = (req.headers["access-control-request-headers"] || "").split(",").map(function (header) { return header.trim().toLowerCase(); }).filter(Boolean);
-      var allowedHeaders = ["accept", "content-type", "ascendontoken", "entitlementtoken", "customdata", "range"];
+      var allowedHeaders = ["accept", "content-type", "ascendontoken", "entitlementtoken", "customdata", "range", "x-f1-device-info", "x-f1-override-video-stream"];
       if (requestedHeaders.some(function (header) { return allowedHeaders.indexOf(header) === -1; })) { res.writeHead(403); res.end(); return; }
       addCorsHeaders(req, res);
       res.writeHead(204); res.end(); return;
@@ -104,7 +105,7 @@ function createProxy() {
     addCorsHeaders(req, res);
 
     var headers = { "user-agent": "Mozilla/5.0", accept: "*/*" };
-    ["accept", "content-type", "ascendontoken", "entitlementtoken", "customdata", "range"].forEach(function (key) {
+    ["accept", "content-type", "ascendontoken", "entitlementtoken", "customdata", "range", "x-f1-device-info", "x-f1-override-video-stream"].forEach(function (key) {
       if (typeof req.headers[key] === "string") headers[key] = req.headers[key];
     });
 

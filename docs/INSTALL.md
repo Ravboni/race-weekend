@@ -65,7 +65,12 @@ Open Race Weekend on the television. Follow its pairing instructions using a pho
 
 ## Update
 
-Download the newer `.ipk` from [Releases](https://github.com/Ravboni/race-weekend/releases/latest) and install it over the existing app using Dev Manager or `ares-install`. Your local app data should remain on the TV; signing in again may be needed if F1 expires the session.
+Race Weekend checks this repository's [Releases](https://github.com/Ravboni/race-weekend/releases) when it starts (at most every 12 hours) and offers a newer version when one is published. You can also check at any time from **Account → App updates**, skip a version, or turn automatic checks off in the same dialog.
+
+- **Rooted TV with the Homebrew Channel:** choose **Update now**. The Homebrew Channel downloads the release `.ipk`, verifies the SHA-256 that GitHub reports for it, and installs it. webOS closes Race Weekend while it is replaced; open it again afterwards.
+- **Developer Mode TV, or no Homebrew Channel:** the dialog shows a QR code for the release page. Download the newer `.ipk` from [Releases](https://github.com/Ravboni/race-weekend/releases/latest) and install it over the existing app using Dev Manager or `ares-install`.
+
+Your local app data should remain on the TV; signing in again may be needed if F1 expires the session.
 
 
 ## Uninstall
