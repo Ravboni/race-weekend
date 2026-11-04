@@ -50,11 +50,10 @@ Measured on an LG OLED55C9PSA (webOS 4.10.2, Chromium 53, Widevine 14) with the 
 
 **What viewers can do.**
 - **Auto** (the default) detects the drop and continues at 1620p, so the picture stays smooth with no setup.
-- For 2160p, close Live TV before playing:
-  - The usual way is to open Race Weekend without Live TV running in the background.
-  - On rooted TVs: `luna-send -n 1 luna://com.webos.applicationManager/closeByAppId '{"id":"com.webos.app.livetv"}'`. A root-level helper can do this whenever Race Weekend comes to the foreground.
-- Race Weekend cannot do this by itself: the application manager's running-app list (`applications.internal`) and `closeByAppId` are not available to apps on webOS 4.
-- The 2160p choice forces 2160p. If Live TV is still running, it plays below real time.
+- **Rooted TVs with the webOS Homebrew Channel:** before playing 2160p (Auto or the fixed 2160p choice), Race Weekend closes a background Live TV itself and shows a notice. It uses the Homebrew Channel's root `exec` to run `applicationManager/running` and, only when Live TV is listed, `closeByAppId` for `com.webos.app.livetv`. 2160p then plays at 50 fps. Nothing changes when Live TV is not running, when 1620p is chosen, or on TVs that confirm smooth 2160p50.
+- **Other TVs (Developer Mode, no root):** apps cannot see or close Live TV on webOS 4. The application manager's running list is limited to `applications.internal`, and calls from apps are denied. Auto handles it by measuring dropped frames. For 2160p, open Race Weekend without Live TV running in the background.
+- **Fixed 2160p:** this choice forces 2160p. Without root, if Live TV is still running, it plays below real time.
+- **Side effect on rooted TVs:** after Live TV is closed, leaving Race Weekend returns to the Home screen instead of the TV channel.
 
 **Other webOS 4 TVs.** Other models were not measured. Auto is designed to work the same way on them: it measures dropped frames and does not depend on a particular model.
 

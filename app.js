@@ -902,7 +902,8 @@ function renderQualityOptions(host) {
 // shares the TV's video decoder: 2160p50 drops to ~43 fps (0.85x) while 1620p50
 // still plays at 50 fps. Apps cannot see or close Live TV (the application
 // manager's running list is not available to them), so Auto measures dropped
-// frames instead.
+// frames instead. On rooted TVs with the webOS Homebrew Channel, the app closes
+// a background Live TV itself before it plays 2160p (closeBackgroundLiveTv).
 // ---------------------------------------------------------------------------
 const UHD_HEIGHT = 2160;
 const UHD_FALLBACK_HEIGHT = 1620;
@@ -1034,6 +1035,33 @@ function uhdPlaybackHeight(heights) {
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden) state.uhdAutoDowngraded = false;
 });
+
+// Rooted TVs only: through the Homebrew Channel's root exec, close the Live TV
+// app when it is running in the background. Resolves true when it was closed.
+// Without the Homebrew Channel the call fails and nothing changes.
+const LIVE_TV_CLOSE_COMMAND = "luna-send -n 1 -w 3000 luna://com.webos.applicationManager/running '{}' </dev/null"
+  + " | grep -q '\"id\" *: *\"com.webos.app.livetv\"'"
+  + " && luna-send -n 1 -w 5000 luna://com.webos.applicationManager/closeByAppId '{\"id\":\"com.webos.app.livetv\"}' </dev/null"
+  + " | grep -q '\"returnValue\" *: *true' && echo closed";
+
+function closeBackgroundLiveTv() {
+  return new Promise((resolve) => {
+    if (typeof window.PalmServiceBridge !== "function") {
+      resolve(false);
+      return;
+    }
+    const timer = window.setTimeout(() => resolve(false), 5000);
+    try {
+      state.liveTvBridge = homebrewCall("exec", { command: LIVE_TV_CLOSE_COMMAND }, (message) => {
+        window.clearTimeout(timer);
+        resolve(message.returnValue === true && /closed/.test(message.stdoutString || ""));
+      });
+    } catch (_error) {
+      window.clearTimeout(timer);
+      resolve(false);
+    }
+  });
+}
 
 function videoFrameCounts(video) {
   try {
@@ -1471,6 +1499,13 @@ function renderHlsSubtitles(host) {
 async function startUhdPlayback(uhd, { resumeAt = 0, audioLanguage = "", subtitleLanguage = "", playbackSeq = state.playbackSeq } = {}) {
   const Hls = await loadHlsEngine();
   if (playbackSeq !== state.playbackSeq || state.currentView !== "player") return;
+  // On rooted webOS 4 TVs, free the video decoder for 2160p (see the notes above).
+  if (uhdUnconfirmed() && uhdHeightChoice() !== "1620" && uhd.heights.includes(UHD_HEIGHT)
+    && (await closeBackgroundLiveTv())) {
+    state.uhdAutoDowngraded = false;
+    showToast("Closed Live TV in the background so 2160p can play smoothly.");
+    if (playbackSeq !== state.playbackSeq || state.currentView !== "player") return;
+  }
   const height = uhdPlaybackHeight(uhd.heights);
   const watchSmoothness = uhdUnconfirmed() && uhdHeightChoice() === "auto" && height === UHD_HEIGHT
     && uhd.heights.some((entry) => entry < height);
