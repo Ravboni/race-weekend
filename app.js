@@ -1867,8 +1867,8 @@ function homebrewInstallerAvailable() {
     try {
       state.homebrewProbe = homebrewCall("checkRoot", {}, (message) => {
         window.clearTimeout(timer);
-        // Any reply without an error code means the service is installed and reachable.
-        resolve(!message.errorCode && message.returnValue !== undefined);
+        // In-app installation is available only when Homebrew confirms root.
+        resolve(!message.errorCode && message.returnValue === true);
       });
     } catch (_error) {
       window.clearTimeout(timer);
