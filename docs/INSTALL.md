@@ -2,7 +2,7 @@
 
 Race Weekend is built to let you use F1 TV on an LG webOS television. This guide installs the prebuilt app package. You need an LG webOS TV on the same local network as the computer used to install it. Check the [tested TV compatibility matrix](../README.md#tested-tv-compatibility) before installing; compatibility is model- and firmware-specific.
 
-The v0.2.0 release includes adaptive Auto quality without the former 540p cap and starts playback with subtitles Off.
+The v0.2.1 release adds Ultra HD playback options on qualifying 4K TVs, including adaptive Ultra HD Auto. Playback starts in adaptive Auto without the former 540p cap and with subtitles Off.
 
 ## 1. Download the app
 
@@ -65,7 +65,12 @@ Open Race Weekend on the television. Follow its pairing instructions using a pho
 
 ## Update
 
-Download the newer `.ipk` from [Releases](https://github.com/Ravboni/race-weekend/releases/latest) and install it over the existing app using Dev Manager or `ares-install`. Your local app data should remain on the TV; signing in again may be needed if F1 expires the session.
+Race Weekend checks this repository's [Releases](https://github.com/Ravboni/race-weekend/releases) when it starts (at most every 12 hours) and offers a newer version when one is published. You can also check at any time from **Account → App updates**, skip a version, or turn automatic checks off in the same dialog.
+
+- **Rooted TV with the Homebrew Channel:** choose **Update now**. The Homebrew Channel downloads the release `.ipk`, verifies the SHA-256 that GitHub reports for it, and installs it. webOS closes Race Weekend while it is replaced; open it again afterwards.
+- **Developer Mode TV, or no Homebrew Channel:** the dialog shows a QR code for the release page. Download the newer `.ipk` from [Releases](https://github.com/Ravboni/race-weekend/releases/latest) and install it over the existing app using Dev Manager or `ares-install`.
+
+Your local app data should remain on the TV; signing in again may be needed if F1 expires the session.
 
 
 ## Uninstall
