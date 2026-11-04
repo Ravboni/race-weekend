@@ -618,7 +618,8 @@ function renderPlayerSources() {
       renderPlayerSources();
       document.querySelector("#player-source-options .player-option.is-selected")?.focus();
       document.getElementById("player-status-text").textContent = `Switching to ${label}…`;
-      startPlayback(state.selectedItem).catch((error) => showPlayerError(error.message));
+      // Replay feeds share one timeline: continue the new feed where the viewer was.
+      startPlayback(state.selectedItem, { resumeAt: resumePosition() }).catch((error) => showPlayerError(error.message));
     });
     button.classList.toggle("player-feed-option", primary);
     const icon = element("span", primary ? `player-source-icon source-icon-${index}` : "player-driver-dot");

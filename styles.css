@@ -93,7 +93,8 @@ button { color: inherit; font: inherit; }
 .detail-description { max-width: 570px; margin: 18px 0 25px; color: #c1c2c9; font-size: 15px; line-height: 1.55; }
 .channel-picker { max-width: 82vw; margin: -4px 0 24px; }
 .channel-label { margin: 0 0 8px; color: #aeb0b8; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
-.channel-options { display: flex; max-width: min(1150px,82vw); gap: 8px; padding: 5px 4px 9px; overflow-x: auto; scrollbar-width: thin; }
+.channel-options { display: flex; max-width: min(1150px,82vw); gap: 8px; padding: 5px 4px 9px; overflow-x: auto; scrollbar-width: none; }
+.channel-options::-webkit-scrollbar { display: none; }
 .channel-option { min-width: max-content; min-height: 38px; padding: 0 12px; border: 1px solid #4a4b52; border-radius: 3px; background: rgba(18,19,23,.88); color: #dedfe4; cursor: pointer; font-size: 11px; font-weight: 700; }
 .channel-option.is-selected { border-color: #ed143b; background: #45121c; color: #fff; }
 .button-secondary { border-color: #55565d; background: rgba(27,28,33,.85); color: #eeeef2; }
