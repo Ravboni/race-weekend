@@ -68,6 +68,9 @@ const state = {
   updateReturnFocus: null,
   pendingUpdateDialog: false,
   uhdMaxHeight: 0,
+  uhdPlayingHeight: 0,
+  uhdAutoDowngraded: false,
+  uhdWatchTimer: null,
   updateCheckSeq: 0,
   subtitleManual: false,
   updateInstalling: false,
@@ -887,17 +890,32 @@ function renderQualityOptions(host) {
 // recent events still return 404 there for a while). A fatal hls.js error falls
 // back to the HD player at the same position.
 //
-// Every F1 rendition is 50 fps. Some TVs decode protected 2160p50 below real
-// time (the OLED C9, webOS 4.x: ~43 fps in its secure video path) yet play the
-// master's 2880x1620 HDR rendition at a full 50 fps. So 2160p is used only when
-// MediaCapabilities reports 2160p50 HEVC as smooth; otherwise the option plays
-// the best HDR rendition up to 1620p.
+// Every F1 rendition is 50 fps. When MediaCapabilities reports 2160p50 HEVC as
+// smooth, the option plays 2160p. TVs that cannot confirm it (webOS 4.x has no
+// MediaCapabilities) offer three choices: Auto, 2160p and 1620p (the master's
+// 2880x1620 HDR rendition). Auto starts at 2160p and watches the decoder; when
+// it falls behind, playback continues at 1620p (see watchUhdSmoothness).
+//
+// Measured on the OLED C9 (webOS 4.10, docs/ULTRA-HD.md): protected 2160p50
+// plays at a full 50 fps, but only while the Live TV app is closed. webOS 4
+// keeps Live TV running behind apps opened over it, and its tuner decoder then
+// shares the TV's video decoder: 2160p50 drops to ~43 fps (0.85x) while 1620p50
+// still plays at 50 fps. Apps cannot see or close Live TV (the application
+// manager's running list is not available to them), so Auto measures dropped
+// frames instead.
 // ---------------------------------------------------------------------------
 const UHD_HEIGHT = 2160;
 const UHD_FALLBACK_HEIGHT = 1620;
 const UHD_PROFILE = "HDR_UHD_CMAFWV";
 const UHD_HEVC = 'video/mp4; codecs="hvc1.2.4.L153.B0"';
 const UHD_PREFERENCE_KEY = "raceWeekendPreferUhd";
+// "2160" or "1620" for a fixed Ultra HD height; missing means Auto. Used only
+// on TVs that cannot confirm smooth 2160p50.
+const UHD_HEIGHT_KEY = "raceWeekendUhdHeight";
+// Auto steps down when more than 1 frame in UHD_DROP_LIMIT is dropped over
+// UHD_WATCH_WINDOW ms of steady playback.
+const UHD_DROP_LIMIT = 25;
+const UHD_WATCH_WINDOW = 6000;
 const ISO_639_2_TO_1 = {
   ara: "ar", chi: "zh", dan: "da", deu: "de", dut: "nl", eng: "en", fra: "fr", fre: "fr", ger: "de", hun: "hu",
   ita: "it", jpn: "ja", kor: "ko", nld: "nl", nor: "no", pol: "pl", por: "pt", rus: "ru", spa: "es", swe: "sv", zho: "zh",
@@ -988,6 +1006,86 @@ async function smoothUhdDecode() {
   }
 }
 
+// True on 4K TVs that cannot confirm smooth 2160p50: they get the Auto, 2160p
+// and 1620p choices.
+function uhdUnconfirmed() {
+  return state.uhdMaxHeight > 0 && state.uhdMaxHeight < UHD_HEIGHT;
+}
+
+function uhdHeightChoice() {
+  const value = readSetting(UHD_HEIGHT_KEY);
+  return value === "2160" || value === "1620" ? value : "auto";
+}
+
+// The tallest available height no taller than the viewer's choice (Auto: 2160p
+// until it stepped down during this visit), else the shortest available.
+function uhdPlaybackHeight(heights) {
+  let target = UHD_HEIGHT;
+  if (uhdUnconfirmed()) {
+    const choice = uhdHeightChoice();
+    if (choice === "auto") target = state.uhdAutoDowngraded ? UHD_FALLBACK_HEIGHT : UHD_HEIGHT;
+    else target = Number(choice);
+  }
+  return heights.find((height) => height <= target) || heights[heights.length - 1];
+}
+
+// The app came back to the foreground: Live TV may have been opened or closed
+// meanwhile, so Auto tries 2160p again on the next start.
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) state.uhdAutoDowngraded = false;
+});
+
+function videoFrameCounts(video) {
+  try {
+    if (typeof video.getVideoPlaybackQuality === "function") {
+      const quality = video.getVideoPlaybackQuality();
+      return { decoded: quality.totalVideoFrames, dropped: quality.droppedVideoFrames };
+    }
+    if (typeof video.webkitDecodedFrameCount === "number") {
+      return { decoded: video.webkitDecodedFrameCount, dropped: video.webkitDroppedFrameCount };
+    }
+  } catch (_error) {}
+  return null;
+}
+
+// Auto at 2160p on a TV that cannot confirm it: every 2 s, compare the frames
+// dropped against those shown over the last UHD_WATCH_WINDOW of steady playback
+// (paused, seeking and buffering reset the window). Too many drops mean the
+// decoder is not keeping up, so playback resumes at the same position in
+// 1620p, which Auto then keeps until the app returns to the foreground.
+function watchUhdSmoothness(video, hls) {
+  window.clearInterval(state.uhdWatchTimer);
+  let base = null;
+  state.uhdWatchTimer = window.setInterval(() => {
+    if (state.hlsPlayer !== hls) {
+      window.clearInterval(state.uhdWatchTimer);
+      state.uhdWatchTimer = null;
+      return;
+    }
+    const frames = videoFrameCounts(video);
+    if (!frames || video.paused || video.seeking || video.readyState < 3) {
+      base = null;
+      return;
+    }
+    if (!base) {
+      base = { ...frames, time: Date.now() };
+      return;
+    }
+    if (Date.now() - base.time < UHD_WATCH_WINDOW) return;
+    const dropped = frames.dropped - base.dropped;
+    const total = frames.decoded - base.decoded;
+    if (total > 0 && dropped * UHD_DROP_LIMIT > total) {
+      window.clearInterval(state.uhdWatchTimer);
+      state.uhdWatchTimer = null;
+      state.uhdAutoDowngraded = true;
+      showToast("This TV is dropping frames at 2160p right now. Switching to 1620p HDR.");
+      restartPlayback({ resumeAt: resumePosition() });
+      return;
+    }
+    base = { ...frames, time: Date.now() };
+  }, 2000);
+}
+
 function uhdLabel(height) {
   return height >= UHD_HEIGHT ? `${height}p · 4K HDR` : `${height}p · HDR`;
 }
@@ -1038,7 +1136,7 @@ function trustedUhdUrl(value, isLicense) {
 
 // The best above-HD HEVC rendition no taller than maxHeight: HDR before SDR,
 // then the highest resolution, then the first listed.
-function uhdVariant(master, maxHeight = state.uhdMaxHeight || UHD_HEIGHT) {
+function uhdVariant(master, maxHeight = UHD_HEIGHT) {
   const lines = String(master).split(/\r?\n/);
   let best = null;
   for (let index = 0; index < lines.length - 1; index += 1) {
@@ -1063,9 +1161,9 @@ function setMediaAttribute(line, name, value) {
 // Keep only the chosen above-HD HEVC rendition (so hls.js never switches),
 // start on the audio language that was playing in HD, and start with subtitles
 // off unless the viewer already chose a subtitle language.
-function prepareUhdMaster(master, { audioLanguage = "", subtitleLanguage = "" } = {}) {
+function prepareUhdMaster(master, { audioLanguage = "", subtitleLanguage = "", maxHeight = UHD_HEIGHT } = {}) {
   const lines = String(master).split(/\r?\n/);
-  const variant = uhdVariant(master);
+  const variant = uhdVariant(master, maxHeight);
   const out = [];
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
@@ -1117,17 +1215,24 @@ async function requestUhdStream(contentId, channelId) {
   if (!url || !licenseUrl) return null;
   const master = await fetch(url, { credentials: "omit" });
   if (!master.ok) return null;
-  const variant = uhdVariant(await master.text());
-  if (!variant || !variant.uri) return null;
-  const media = await fetch(new URL(variant.uri, url).href, { credentials: "omit" });
-  if (!media.ok) return null;
+  const masterText = await master.text();
+  // The 2160p choice, plus 1620p on TVs that cannot confirm smooth 2160p50.
+  const limits = uhdUnconfirmed() ? [UHD_HEIGHT, UHD_FALLBACK_HEIGHT] : [UHD_HEIGHT];
+  const heights = [];
+  for (const limit of limits) {
+    const variant = uhdVariant(masterText, limit);
+    if (!variant || !variant.uri || heights.includes(variant.height)) continue;
+    const media = await fetch(new URL(variant.uri, url).href, { credentials: "omit" });
+    if (media.ok) heights.push(variant.height);
+  }
+  if (!heights.length) return null;
   return {
     url,
     licenseUrl,
     device,
     entitlementToken: stream.entitlementToken || state.session.entitlement,
     drmToken: stream.drmToken || "",
-    height: variant.height,
+    heights,
   };
 }
 
@@ -1174,26 +1279,42 @@ function renderUhdOption(host) {
   const active = Boolean(state.hlsPlayer);
   const check = state.uhdCheck;
   const current = check?.key === uhdCheckKey(currentContentId(), state.selectedChannelId) ? check : null;
-  const height = current?.stream?.height || state.uhdMaxHeight || UHD_HEIGHT;
-  let label = uhdLabel(height);
-  let disabled = false;
+  const heights = current?.stream?.heights || [];
+  const playing = active ? state.uhdPlayingHeight : 0;
+  const notice = (text) => {
+    host.append(playerOption(`Ultra HD · ${text}`, false, () => {}, true));
+  };
   if (!active) {
-    if (!current || current.pending) {
-      label = `${height}p · checking HDR…`;
-      disabled = true;
-    } else if (current.failed) {
-      label = `${height}p · could not check HDR`;
-      disabled = true;
-    } else if (!current.stream) {
-      label = `${height}p · not available for this video`;
-      disabled = true;
-    }
+    if (!current || current.pending) return notice("checking…");
+    if (current.failed) return notice("could not check");
+    if (!heights.length) return notice("not available for this video");
   }
-  host.append(playerOption(label, active, () => {
-    if (active) return;
+  // value: "auto", "2160" or "1620". Choosing what is already playing does nothing.
+  const choose = (value) => () => {
+    const auto = value === "auto";
+    if (active) {
+      if (!uhdUnconfirmed()) return;
+      if (auto ? uhdHeightChoice() === "auto" && !state.uhdAutoDowngraded : uhdHeightChoice() === value) return;
+    }
+    writeSetting(UHD_HEIGHT_KEY, auto ? null : value);
+    if (auto) state.uhdAutoDowngraded = false;
     setUhdPreferred(true);
     restartPlayback({ resumeAt: resumePosition() });
-  }, disabled));
+  };
+  if (!uhdUnconfirmed() || heights.length < 2) {
+    const height = playing || heights[0] || state.uhdMaxHeight || UHD_HEIGHT;
+    host.append(playerOption(uhdLabel(height), active, choose(String(height))));
+    return;
+  }
+  const choice = uhdHeightChoice();
+  host.append(playerOption(
+    active && choice === "auto" ? `Ultra HD Auto · ${uhdLabel(playing)}` : "Ultra HD Auto · 2160p or 1620p",
+    active && choice === "auto",
+    choose("auto"),
+  ));
+  heights.forEach((height) => {
+    host.append(playerOption(uhdLabel(height), active && choice === String(height), choose(String(height))));
+  });
 }
 
 function resumePosition() {
@@ -1350,6 +1471,9 @@ function renderHlsSubtitles(host) {
 async function startUhdPlayback(uhd, { resumeAt = 0, audioLanguage = "", subtitleLanguage = "", playbackSeq = state.playbackSeq } = {}) {
   const Hls = await loadHlsEngine();
   if (playbackSeq !== state.playbackSeq || state.currentView !== "player") return;
+  const height = uhdPlaybackHeight(uhd.heights);
+  const watchSmoothness = uhdUnconfirmed() && uhdHeightChoice() === "auto" && height === UHD_HEIGHT
+    && uhd.heights.some((entry) => entry < height);
   const status = document.getElementById("player-status-text");
   const video = freshPlayerVideo();
   state.lastEngine = "hls";
@@ -1360,7 +1484,7 @@ async function startUhdPlayback(uhd, { resumeAt = 0, audioLanguage = "", subtitl
   };
   // Same as the HD license request (auth.js) when the 3.0 response carries one.
   if (uhd.drmToken) licenseHeaders.customdata = uhd.drmToken;
-  const masterOptions = { audioLanguage, subtitleLanguage };
+  const masterOptions = { audioLanguage, subtitleLanguage, maxHeight: height };
   class UhdLoader extends Hls.DefaultConfig.loader {
     load(context, config, callbacks) {
       if (context.type === "manifest") {
@@ -1391,8 +1515,9 @@ async function startUhdPlayback(uhd, { resumeAt = 0, audioLanguage = "", subtitl
     backBufferLength: 10,
   });
   state.hlsPlayer = hls;
+  state.uhdPlayingHeight = height;
   hls.on(Hls.Events.MANIFEST_PARSED, () => {
-    const level = hls.levels.findIndex((entry) => entry.height === uhd.height);
+    const level = hls.levels.findIndex((entry) => entry.height === height);
     if (level < 0) {
       fallBackFromUhd("This video has no Ultra HD rendition. Switching to HD.");
       return;
@@ -1413,13 +1538,16 @@ async function startUhdPlayback(uhd, { resumeAt = 0, audioLanguage = "", subtitl
   hls.on(Hls.Events.ERROR, (_event, data) => {
     if (data?.fatal) fallBackFromUhd();
   });
-  video.onplaying = () => { status.textContent = `Playing on F1 TV · ${uhdLabel(uhd.height)}`; };
+  video.onplaying = () => {
+    status.textContent = `Playing on F1 TV · ${uhdLabel(height)}`;
+    if (watchSmoothness && !state.uhdWatchTimer && state.hlsPlayer === hls) watchUhdSmoothness(video, hls);
+  };
   video.onwaiting = () => { status.textContent = "Buffering…"; };
   video.onplay = () => { document.getElementById("player-toggle").textContent = "Pause"; };
   video.onpause = () => { document.getElementById("player-toggle").textContent = "Play"; };
   video.ontimeupdate = updateTimeline;
   video.onprogress = updateTimeline;
-  status.textContent = `Starting ${uhdLabel(uhd.height)}…`;
+  status.textContent = `Starting ${uhdLabel(height)}…`;
   hls.attachMedia(video);
   hls.loadSource(uhd.url);
   if (state.playerPanel === "language") {
@@ -2130,6 +2258,8 @@ function showPlayerError(message) {
 function stopPlayback() {
   window.clearTimeout(state.playerTimer);
   window.clearInterval(state.timelineTimer);
+  window.clearInterval(state.uhdWatchTimer);
+  state.uhdWatchTimer = null;
   state.playerTimer = null;
   state.timelineTimer = null;
   if (state.hlsPlayer) {
