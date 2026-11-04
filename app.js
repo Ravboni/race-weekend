@@ -2001,7 +2001,20 @@ function installUpdate() {
     const { detail } = updateDialogElements();
     if (message.returnValue === false || message.errorText) {
       state.updateInstalling = false;
-      renderUpdateDialog({ title: "The update could not be installed", detail: message.errorText || "The Homebrew Channel reported an error.", update, canInstall: true });
+      const homebrewUnavailable = /org\.webosbrew\.hbchannel\.service is not running/i.test(message.errorText || "");
+      const errorDetail = homebrewUnavailable
+        ? "The Homebrew Channel installer service is not running. Open Homebrew Channel on the TV, confirm Root status is OK, then try again from Account → App updates. You can also scan the code to install this release with webOS Dev Manager."
+        : `${message.errorText || "The Homebrew Channel reported an error."} You can scan the code to install this release with webOS Dev Manager.`;
+      // The service can stop after the initial root check. Keep the update offer,
+      // but reveal its manual-install path instead of leaving the viewer stuck
+      // with a retry button that will call the unavailable service again.
+      state.update = { ...update, canInstall: false };
+      renderUpdateDialog({
+        title: homebrewUnavailable ? "Homebrew Channel is not running" : "The update could not be installed",
+        detail: errorDetail,
+        update: state.update,
+        canInstall: false,
+      });
       return;
     }
     const progress = Number.isFinite(message.progress) ? ` ${Math.round(message.progress)}%` : "";
