@@ -67,6 +67,7 @@ const state = {
   update: null,
   updateReturnFocus: null,
   pendingUpdateDialog: false,
+  uhdMaxHeight: 0,
   updateCheckSeq: 0,
   subtitleManual: false,
   updateInstalling: false,
@@ -881,12 +882,19 @@ function renderQualityOptions(host) {
 // the 2160p choice uses hls.js (vendor/hls.min.js, loaded on demand) while every
 // other quality keeps the dash.js path. The option is offered only when the TV
 // qualifies (4K panel, HEVC through MSE, hardware-secure Widevine for HEVC) and
-// is enabled only when this programme's master playlist lists a 2160p HEVC
+// is enabled only when this programme's master playlist lists an above-HD HEVC
 // rendition whose media playlist actually answers (finished replays of the most
 // recent events still return 404 there for a while). A fatal hls.js error falls
 // back to the HD player at the same position.
+//
+// Every F1 rendition is 50 fps. Some TVs decode protected 2160p50 below real
+// time (the OLED C9, webOS 4.x: ~43 fps in its secure video path) yet play the
+// master's 2880x1620 HDR rendition at a full 50 fps. So 2160p is used only when
+// MediaCapabilities reports 2160p50 HEVC as smooth; otherwise the option plays
+// the best HDR rendition up to 1620p.
 // ---------------------------------------------------------------------------
 const UHD_HEIGHT = 2160;
+const UHD_FALLBACK_HEIGHT = 1620;
 const UHD_PROFILE = "HDR_UHD_CMAFWV";
 const UHD_HEVC = 'video/mp4; codecs="hvc1.2.4.L153.B0"';
 const UHD_PREFERENCE_KEY = "raceWeekendPreferUhd";
@@ -951,7 +959,9 @@ function tvSupportsUhd() {
           audioCapabilities: [{ contentType: 'audio/mp4; codecs="mp4a.40.2"', robustness: "HW_SECURE_CRYPTO" }],
         }]);
         const Hls = await loadHlsEngine();
-        return Hls.isSupported();
+        if (!Hls.isSupported()) return false;
+        state.uhdMaxHeight = (await smoothUhdDecode()) ? UHD_HEIGHT : UHD_FALLBACK_HEIGHT;
+        return true;
       } catch (_error) {
         return false;
       }
@@ -961,6 +971,25 @@ function tvSupportsUhd() {
     });
   }
   return state.uhdTvCheck;
+}
+
+// True only when the TV says it decodes 2160p50 HEVC smoothly. Browsers without
+// MediaCapabilities (Chromium < 66, e.g. webOS 4.x) cannot confirm it.
+async function smoothUhdDecode() {
+  if (!navigator.mediaCapabilities?.decodingInfo) return false;
+  try {
+    const info = await navigator.mediaCapabilities.decodingInfo({
+      type: "media-source",
+      video: { contentType: UHD_HEVC, width: 3840, height: 2160, bitrate: 18000000, framerate: 50 },
+    });
+    return Boolean(info?.supported && info.smooth);
+  } catch (_error) {
+    return false;
+  }
+}
+
+function uhdLabel(height) {
+  return height >= UHD_HEIGHT ? `${height}p · 4K HDR` : `${height}p · HDR`;
 }
 
 // The webOS release ("4.10.2", "6.5.3"). F1 rejects the 3.0 PLAY request from
@@ -1007,17 +1036,23 @@ function trustedUhdUrl(value, isLicense) {
   }
 }
 
-function uhdVariant(master) {
+// The best above-HD HEVC rendition no taller than maxHeight: HDR before SDR,
+// then the highest resolution, then the first listed.
+function uhdVariant(master, maxHeight = state.uhdMaxHeight || UHD_HEIGHT) {
   const lines = String(master).split(/\r?\n/);
+  let best = null;
   for (let index = 0; index < lines.length - 1; index += 1) {
     const line = lines[index];
-    if (line.indexOf("#EXT-X-STREAM-INF:") !== 0) continue;
+    if (line.indexOf("#EXT-X-STREAM-INF:") !== 0 || !/\b(?:hev1|hvc1)\./.test(line)) continue;
     const resolution = line.match(/RESOLUTION=(\d+)x(\d+)/);
-    if (resolution && Number(resolution[2]) === UHD_HEIGHT && /\b(?:hev1|hvc1)\./.test(line)) {
-      return { line: index, uri: lines[index + 1].trim() };
+    const height = resolution ? Number(resolution[2]) : 0;
+    if (height <= 1080 || height > maxHeight) continue;
+    const hdr = /VIDEO-RANGE=(?:HLG|PQ)/.test(line) ? 1 : 0;
+    if (!best || hdr > best.hdr || (hdr === best.hdr && height > best.height)) {
+      best = { line: index, uri: lines[index + 1].trim(), height, hdr };
     }
   }
-  return null;
+  return best;
 }
 
 function setMediaAttribute(line, name, value) {
@@ -1025,7 +1060,7 @@ function setMediaAttribute(line, name, value) {
   return pattern.test(line) ? line.replace(pattern, `$1${name}=${value}`) : `${line},${name}=${value}`;
 }
 
-// Keep only the first 2160p HEVC rendition (so hls.js never switches codecs),
+// Keep only the chosen above-HD HEVC rendition (so hls.js never switches),
 // start on the audio language that was playing in HD, and start with subtitles
 // off unless the viewer already chose a subtitle language.
 function prepareUhdMaster(master, { audioLanguage = "", subtitleLanguage = "" } = {}) {
@@ -1092,6 +1127,7 @@ async function requestUhdStream(contentId, channelId) {
     device,
     entitlementToken: stream.entitlementToken || state.session.entitlement,
     drmToken: stream.drmToken || "",
+    height: variant.height,
   };
 }
 
@@ -1137,17 +1173,19 @@ function renderUhdOption(host) {
   if (state.uhdTv !== true) return;
   const active = Boolean(state.hlsPlayer);
   const check = state.uhdCheck;
-  let label = "2160p · 4K HDR";
+  const current = check?.key === uhdCheckKey(currentContentId(), state.selectedChannelId) ? check : null;
+  const height = current?.stream?.height || state.uhdMaxHeight || UHD_HEIGHT;
+  let label = uhdLabel(height);
   let disabled = false;
   if (!active) {
-    if (!check || check.key !== uhdCheckKey(currentContentId(), state.selectedChannelId) || check.pending) {
-      label = "2160p · checking 4K…";
+    if (!current || current.pending) {
+      label = `${height}p · checking HDR…`;
       disabled = true;
-    } else if (check.failed) {
-      label = "2160p · could not check 4K";
+    } else if (current.failed) {
+      label = `${height}p · could not check HDR`;
       disabled = true;
-    } else if (!check.stream) {
-      label = "2160p · not available for this video";
+    } else if (!current.stream) {
+      label = `${height}p · not available for this video`;
       disabled = true;
     }
   }
@@ -1236,7 +1274,7 @@ function rememberedHdQuality() {
 
 function fallBackFromUhd(message) {
   if (!state.hlsPlayer) return;
-  showToast(message || "4K playback stopped. Switching to HD.");
+  showToast(message || "Ultra HD playback stopped. Switching to HD.");
   restartPlayback({ resumeAt: resumePosition(), skipUhd: true });
 }
 
@@ -1354,9 +1392,9 @@ async function startUhdPlayback(uhd, { resumeAt = 0, audioLanguage = "", subtitl
   });
   state.hlsPlayer = hls;
   hls.on(Hls.Events.MANIFEST_PARSED, () => {
-    const level = hls.levels.findIndex((entry) => entry.height === UHD_HEIGHT);
+    const level = hls.levels.findIndex((entry) => entry.height === uhd.height);
     if (level < 0) {
-      fallBackFromUhd("This video has no 4K rendition. Switching to HD.");
+      fallBackFromUhd("This video has no Ultra HD rendition. Switching to HD.");
       return;
     }
     hls.startLevel = level;
@@ -1375,13 +1413,13 @@ async function startUhdPlayback(uhd, { resumeAt = 0, audioLanguage = "", subtitl
   hls.on(Hls.Events.ERROR, (_event, data) => {
     if (data?.fatal) fallBackFromUhd();
   });
-  video.onplaying = () => { status.textContent = "Playing on F1 TV · 4K HDR"; };
+  video.onplaying = () => { status.textContent = `Playing on F1 TV · ${uhdLabel(uhd.height)}`; };
   video.onwaiting = () => { status.textContent = "Buffering…"; };
   video.onplay = () => { document.getElementById("player-toggle").textContent = "Pause"; };
   video.onpause = () => { document.getElementById("player-toggle").textContent = "Play"; };
   video.ontimeupdate = updateTimeline;
   video.onprogress = updateTimeline;
-  status.textContent = "Starting 4K…";
+  status.textContent = `Starting ${uhdLabel(uhd.height)}…`;
   hls.attachMedia(video);
   hls.loadSource(uhd.url);
   if (state.playerPanel === "language") {
@@ -1985,7 +2023,7 @@ async function startPlayback(item, options = {}) {
         await startUhdPlayback(uhd, { ...options, audioLanguage, subtitleLanguage, playbackSeq });
         return;
       }
-      showToast("4K is not available for this video. Playing HD.");
+      showToast("Ultra HD is not available for this video. Playing HD.");
       status.textContent = "Requesting your F1 TV stream…";
     }
     const stream = await state.session.play(contentId, state.selectedChannelId);
