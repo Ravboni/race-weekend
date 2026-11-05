@@ -66,6 +66,7 @@ The attestation proves which repository workflow produced the package and binds 
 - Choose a live feed independently from the audio language and subtitles offered for that feed.
 - Start each stream in adaptive Auto quality with subtitles Off; select a specific available quality or subtitle track during playback.
 - Play Ultra HD (2160p or 2880x1620 HDR) on qualifying 4K TVs when F1 offers it for the programme. See [Ultra HD playback](docs/ULTRA-HD.md).
+- Watch a second feed (an onboard, the tracker, the data feed) in a picture-in-picture window on webOS 6 and later. See [Picture-in-picture](docs/PICTURE-IN-PICTURE.md).
 - Navigate with the TV remote, including playback controls and D-pad seeking.
 - Show a TV-scale interface with large cards, Roboto typography, and clear focus states.
 
@@ -77,6 +78,9 @@ Feed names, audio languages, subtitles, and available replays vary by event, acc
 - **OK:** Select the focused item; confirm a seek position while the playback timeline is active.
 - **Back:** Close the current player panel or overlay, then navigate back through the app.
 - **During playback:** Open feed and audio/subtitle choices from their separate controls; use the timeline to seek.
+- **Number keys (during playback):** Type a car number (for example `1` `6` for car 16) to open that driver's onboard in the picture-in-picture window; type the same number again to put it full screen, or `0` `0` to close the window. On TVs without picture-in-picture, the number switches the full-screen feed.
+- **Blue button (during playback):** Move the picture-in-picture window to the next corner.
+- **Sources → PiP:** Open a feed in the window. With the window open, **Swap** exchanges the two feeds, **Move** changes the corner and **Close PiP** returns to one feed.
 
 Exact behavior can vary slightly between TV remotes and webOS versions.
 

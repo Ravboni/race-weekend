@@ -1210,3 +1210,104 @@ button:focus, input:focus, select:focus, textarea:focus { outline: none; }
 .update-card .sign-out-actions { margin-top: 32px; }
 .update-card .sign-out-actions .button { min-width: 0; padding-inline: 36px; white-space: nowrap; }
 .update-card .update-auto { min-width: 0; min-height: 56px; margin-top: 24px; font-size: 17px; }
+
+/* Picture-in-picture: a second feed in a window over the main one (webOS 6+). */
+.player-pip {
+  position: absolute;
+  z-index: 3;
+  width: 30vw;
+  height: 16.875vw;
+  outline: 3px solid rgba(255,255,255,.92);
+  box-shadow: 0 12px 40px rgba(0,0,0,.6);
+  pointer-events: none;
+}
+/* The viewer's corner (remote blue button or "Move" in Sources). */
+.player-pip.pip-top-right { top: var(--tv-safe-y, 48px); right: var(--tv-safe-x, 48px); }
+.player-pip.pip-bottom-right { bottom: var(--tv-safe-y, 48px); right: var(--tv-safe-x, 48px); }
+.player-pip.pip-bottom-left { bottom: var(--tv-safe-y, 48px); left: var(--tv-safe-x, 48px); }
+.player-pip.pip-top-left { top: var(--tv-safe-y, 48px); left: var(--tv-safe-x, 48px); }
+.player-pip-video { display: block; width: 100%; height: 100%; background: transparent; object-fit: contain; }
+.player-pip-label {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: rgba(8,9,12,.82);
+  color: #fff;
+  font-size: var(--tv-label, 20px);
+  font-weight: 800;
+  letter-spacing: .02em;
+}
+.player-car-entry {
+  position: absolute;
+  z-index: 5;
+  top: var(--tv-safe-y, 48px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 16px 32px;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 14px;
+  background: rgba(12,13,18,.94);
+  color: #fff;
+  font-size: 40px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .04em;
+}
+/* Chromium 79 (webOS 6) has no flexbox gap: space the buttons with margins. */
+.player-source-row { display: flex; }
+.player-source-row .player-option:not(.player-pip-option) { flex: 1 1 auto; min-width: 0; }
+.player-options .player-pip-option { flex: 0 0 auto; width: auto; margin-left: 10px; padding-inline: 18px; justify-content: center; text-transform: none; }
+.player-pip-actions { display: flex; margin-bottom: 6px; }
+.player-pip-actions .player-option { flex: 1 1 0; justify-content: center; }
+.player-pip-actions .player-option + .player-option { margin-left: 10px; }
+.player-source-tag {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding: 4px 10px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: .72em;
+  font-weight: 700;
+  letter-spacing: .02em;
+  text-transform: none;
+  opacity: .85;
+}
+/* First picture-in-picture: what the remote does (shown once). */
+.player-pip-hint {
+  position: absolute;
+  z-index: 5;
+  top: var(--tv-safe-y, 48px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 520px;
+  box-sizing: border-box;
+  padding: 22px 30px;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 16px;
+  background: rgba(12,13,18,.95);
+  box-shadow: 0 12px 40px rgba(0,0,0,.55);
+  color: #fff;
+}
+.player-pip-hint-title { margin: 0 0 12px; font-size: 22px; font-weight: 800; }
+.player-pip-hint ul { margin: 0; padding: 0; list-style: none; }
+.player-pip-hint li { display: flex; align-items: center; margin-top: 10px; font-size: 20px; }
+.player-pip-key {
+  display: inline-flex;
+  flex: 0 0 auto;
+  min-width: 78px;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  margin-right: 14px;
+  padding: 0 10px;
+  box-sizing: border-box;
+  border: 1px solid rgba(255,255,255,.35);
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 800;
+}
+.player-pip-key-blue { min-width: 0; width: 34px; margin-right: 58px; padding: 0; border: 0; border-radius: 50%; background: #2f6fde; }
+/* Toasts above the player (z-index 15) so playback messages show; dialogs (20+) stay on top. */
+.toast { z-index: 19; }
