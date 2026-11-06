@@ -36,7 +36,8 @@
 | --- | --- | --- |
 | LG OLED55C25LB (C2) | webOS 11.2.0 | End-to-end app use; 1080p playback, audio, feeds, and subtitle selection confirmed. The hardened catalog bridge was also exercised. |
 | LG OLED55E9PLA (E9) | webOS 4.5, firmware 05.50.00, Chromium 53 | Catalogue, phone pairing, remote navigation, and replay picture/audio confirmed. Playback above 540p was confirmed on this rooted test setup. |
-| LG 43UP7500PSF | webOS 6.5.3-47, Chrome 79 | Home catalogue and artwork loaded through the bundled bridge. Playback was not tested on this model. |
+| LG 43UP7500PSF | webOS 6.5.3-47, Chrome 79 | Catalogue/artwork and the PR #41 dual-HD replay path were tested. |
+| LG OLED55C9PSA (C9) | webOS 4.10.2, firmware 05.50.00, Chrome 53 | Rooted integration: race + onboard at 1080p50 / 720p50 with main audio; model/root detection and temporary PiP activation verified. Existing CBCS HD fix detected and preserved. |
 
 The app's former fixed 540p bitrate ceiling has been removed. New playback starts in adaptive **Auto** with no app-imposed 540p cap; manual quality choices are available per stream and are not saved for the next stream. The E9's higher-quality playback was confirmed on this rooted test setup after earlier tests at 540p. This does not remove decoder or firmware limitations on every webOS 4.5 TV: the maximum quality can still vary by model, firmware, stream, and network.
 
@@ -66,7 +67,7 @@ The attestation proves which repository workflow produced the package and binds 
 - Choose a live feed independently from the audio language and subtitles offered for that feed.
 - Start each stream in adaptive Auto quality with subtitles Off; select a specific available quality or subtitle track during playback.
 - Play Ultra HD (2160p or 2880x1620 HDR) on qualifying 4K TVs when F1 offers it for the programme. See [Ultra HD playback](docs/ULTRA-HD.md).
-- Watch a second feed (an onboard, the tracker, the data feed) in a picture-in-picture window on webOS 6 and later. See [Picture-in-picture](docs/PICTURE-IN-PICTURE.md).
+- Watch a second feed (an onboard, the tracker, the data feed) in a picture-in-picture window on webOS 6 and later, or a compatible rooted C9. TV support detects the platform and caps both feeds accordingly. See [Picture-in-picture](docs/PICTURE-IN-PICTURE.md).
 - Navigate with the TV remote, including playback controls and D-pad seeking.
 - Show a TV-scale interface with large cards, Roboto typography, and clear focus states.
 
@@ -95,7 +96,7 @@ The app requests streams allowed by the signed-in account and uses webOS playbac
 - **Quality selection:** Playback starts in adaptive Auto and does not impose the former 540p bitrate ceiling. Available manual quality choices apply only to the current stream. Higher-than-540p playback was confirmed on the rooted OLED55E9PLA test setup; unmodified TVs with older decoders may still have hardware or firmware limits.
 - **Ultra HD and Live TV (webOS 4):** On the OLED C9 (webOS 4.10), 2160p50 plays at 50 fps only while the Live TV app is closed. webOS 4 keeps Live TV running behind apps opened over it; its tuner decoder then shares the video decoder, and 2160p drops to ~43 fps. On rooted TVs with the Homebrew Channel, Race Weekend closes a background Live TV before playing 2160p. Elsewhere, the default **Ultra HD Auto** detects the drop and continues at 1620p HDR. Fixed 2160p and 1620p choices are also available. Details: [Ultra HD playback](docs/ULTRA-HD.md#findings-oled-c9-webos-4x-and-live-tv).
 - **Subtitles:** New streams start with subtitles Off. F1 subtitle tracks remain selectable, and fragmented TTML rendering was confirmed in the C2 test build.
-- **webOS 6:** The bundled bridge restored catalogue and artwork loading on the LG 43UP7500PSF test unit. Playback on that model has not been verified.
+- **PiP profiles:** modern TVs use native dual playback; the supported C9 needs Homebrew root and temporary companion activation. Secondary quality choices respect the detected model. Account → TV support also detects the known CBCS HD defect and offers the bundled repair when applicable. See [Picture-in-picture](docs/PICTURE-IN-PICTURE.md).
 - Release v0.2.1 adds Ultra HD options and webOS 4 Live TV handling; the playback defaults and subtitle updates were introduced in v0.2.0.
 - Changes to F1's services may temporarily break sign-in, catalogue browsing, or playback.
 

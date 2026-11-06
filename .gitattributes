@@ -1,0 +1,4 @@
+# TV shell scripts and pinned checksums must survive Windows checkouts unchanged.
+*.sh text eol=lf
+root-pip/*.sha256 text eol=lf
+root-pip/lib/*.so binary

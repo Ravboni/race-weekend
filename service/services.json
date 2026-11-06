@@ -1,10 +1,10 @@
 {
   "id": "com.ravboni.raceweekend.service",
-  "description": "Race Weekend F1 catalog bridge: allowlisted 127.0.0.1 reverse proxy that re-emits CORP cross-origin so the webOS 6/22 webview can read the same-origin-locked F1 TV API.",
+  "description": "Race Weekend local F1 catalog bridge and bounded clear DASH manifests for picture-in-picture.",
   "services": [
     {
       "name": "com.ravboni.raceweekend.service",
-      "description": "Local F1 TV catalog/auth/image reverse proxy"
+      "description": "Local F1 TV catalog/auth/image proxy and picture-in-picture manifests"
     }
   ]
 }

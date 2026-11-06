@@ -21,20 +21,21 @@
 //   * listens only on 127.0.0.1 and forwards only an allowlist of F1 paths
 //     over normal TLS, adding no credentials and persisting no session state.
 //
-// webOS 6's Node is v8.12, so this file stays ES5-ish: `URL` comes from 'url'
-// and https.request() is given an options object (it does not accept a WHATWG
-// URL as its first argument until Node 10.9).
+// webOS 4 uses Node 0.12 and webOS 6 uses Node 8. This service uses ES5
+// and node-compat for the API differences; it is runtime-tested on both.
 
 var Service = require("webos-service");
 var http = require("http");
 var https = require("https");
 var crypto = require("crypto");
-var URL = require("url").URL;
+var compat = require("./node-compat");
+var URL = compat.URL;
 
 var PORT = 18741;
 var APP_ID = "com.ravboni.raceweekend";
 var APP_ORIGIN = "file://com.ravboni.raceweekend-webos";
 var TOKEN_PARAM = "__rwv_session";
+var pip = require("./pip-service")({ appId: APP_ID, port: PORT });
 
 // host -> allowed path prefixes. Mirrors the documented catalog/auth/image
 // endpoints the app needs (3.0 is the PLAY API that serves the 4K profile);
@@ -48,7 +49,8 @@ var ALLOWED = {
 function upstreamURL(raw, token) {
   var match = /^\/([^/]+)(\/[^#]*)$/.exec(raw);
   if (!match || !ALLOWED[match[1]]) return null;
-  var u = new URL("https://" + match[1] + match[2]);
+  var u;
+  try { u = new URL("https://" + match[1] + match[2]); } catch (_error) { return null; }
   if (u.hostname !== match[1] || u.port || u.username || u.password || !ALLOWED[u.hostname].test(u.pathname)) {
     return null;
   }
@@ -60,9 +62,14 @@ function upstreamURL(raw, token) {
 
 function safeTokenEqual(candidate, expected) {
   if (typeof candidate !== "string" || typeof expected !== "string" || !/^[a-f0-9]{64}$/.test(candidate) || !/^[a-f0-9]{64}$/.test(expected)) return false;
-  var a = Buffer.from(candidate, "hex");
-  var b = Buffer.from(expected, "hex");
-  return a.length === b.length && crypto.timingSafeEqual(a, b);
+  var a = new Buffer(candidate, "hex");
+  var b = new Buffer(expected, "hex");
+  if (typeof crypto.timingSafeEqual === "function") return crypto.timingSafeEqual(a, b);
+  // Both inputs have already been constrained to exactly 32 bytes. Node 0.12
+  // lacks timingSafeEqual; compare every byte, without an early mismatch exit.
+  var mismatch = 0;
+  for (var i = 0; i < a.length; i += 1) mismatch |= a[i] ^ b[i];
+  return mismatch === 0;
 }
 
 function requestOriginAllowed(origin) {
@@ -89,6 +96,7 @@ function createProxy() {
     if (!requestOriginAllowed(origin)) {
       res.writeHead(403); res.end(); return;
     }
+    if (pip.handle(req, res)) return;
     var url = upstreamURL(req.url, sessionToken);
     if (!url || ["GET", "HEAD", "POST", "OPTIONS"].indexOf(req.method) === -1) {
       res.writeHead(403); res.end(); return;
@@ -113,7 +121,7 @@ function createProxy() {
     var length = 0;
     req.on("data", function (chunk) {
       length += chunk.length;
-      if (length > 2097152) { res.writeHead(413); res.end(); req.destroy(); return; }
+      if (length > 2097152) { res.writeHead(413); res.end(); compat.destroy(req); return; }
       parts.push(chunk);
     });
     req.on("end", function () {
@@ -133,33 +141,41 @@ function createProxy() {
           if (reply.headers[key]) res.setHeader(key, reply.headers[key]);
         });
         res.writeHead(reply.statusCode);
-        reply.on("error", function () { res.destroy(); });
+        reply.on("error", function () { compat.destroy(res); });
         reply.pipe(res);
       });
-      upstream.setTimeout(20000, function () { upstream.destroy(); });
+      upstream.setTimeout(20000, function () { compat.destroy(upstream); });
       upstream.on("error", function () { if (!res.headersSent) res.writeHead(502); res.end(); });
-      res.on("close", function () { upstream.destroy(); });
+      res.on("close", function () { compat.destroy(upstream); });
       upstream.end(body);
     });
-    req.on("error", function () { res.destroy(); });
+    req.on("error", function () { compat.destroy(res); });
   });
 }
 
 var server = null;
 var lastError = null;
 
+var listeningCallbacks = [];
+function isListening() {
+  return !!(server && server.address());
+}
 function ensureListening(callback) {
-  if (server && server.listening) { callback(true); return; }
+  if (isListening()) { callback(true); return; }
+  listeningCallbacks.push(callback);
+  if (server) return;
   server = createProxy();
-  server.once("error", function (error) {
-    // EADDRINUSE means a proxy (this service or the legacy root bridge) is
-    // already serving the port, which is fine for our purposes.
-    lastError = String(error && error.message ? error.message : error);
-    var inUse = error && error.code === "EADDRINUSE";
-    server = inUse ? server : null;
-    callback(inUse);
+  function complete(ok) {
+    var callbacks = listeningCallbacks;
+    listeningCallbacks = [];
+    callbacks.forEach(function (ready) { ready(ok); });
+  }
+  server.once("error", function () {
+    lastError = "Local F1 service unavailable.";
+    server = null;
+    complete(false);
   });
-  server.listen(PORT, "127.0.0.1", function () { lastError = null; callback(true); });
+  server.listen(PORT, "127.0.0.1", function () { lastError = null; complete(true); });
 }
 
 // Start the proxy as soon as webOS launches this service process (the Luna
@@ -168,17 +184,21 @@ ensureListening(function () {});
 
 var service = new Service("com.ravboni.raceweekend.service");
 
+pip.register(service, function (callback) {
+  ensureListening(function () { callback(isListening()); });
+});
+
 service.register("start", function (message) {
   if (message.sender !== APP_ID) { message.respond({ started: false, error: "unauthorized" }); return; }
   sessionToken = crypto.randomBytes(32).toString("hex");
   ensureListening(function (ok) {
-    message.respond({ started: ok, listening: !!(server && server.listening), port: PORT, token: ok ? sessionToken : null, error: lastError });
+    message.respond({ started: ok, listening: isListening(), port: PORT, token: ok ? sessionToken : null, error: lastError });
   });
 });
 
 service.register("status", function (message) {
   if (message.sender !== APP_ID) { message.respond({ listening: false, error: "unauthorized" }); return; }
-  message.respond({ listening: !!(server && server.listening), port: PORT, error: lastError });
+  message.respond({ listening: isListening(), port: PORT, error: lastError });
 });
 
 // Keep-alive anchor. webos-service exits the process ~5s after its activity
@@ -189,5 +209,5 @@ service.register("status", function (message) {
 // no lingering process, no root daemon.
 service.register("keepalive", function (message) {
   if (message.sender !== APP_ID) { message.respond({ subscribed: false, listening: false, error: "unauthorized" }); return; }
-  message.respond({ subscribed: !!message.isSubscription, listening: !!(server && server.listening), port: PORT });
+  message.respond({ subscribed: !!message.isSubscription, listening: isListening(), port: PORT });
 });

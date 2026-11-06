@@ -1310,3 +1310,21 @@ button:focus, input:focus, select:focus, textarea:focus { outline: none; }
   font-weight: 800;
 }
 .player-pip-key-blue { min-width: 0; width: 34px; margin-right: 58px; padding: 0; border: 0; border-radius: 50%; background: #2f6fde; }
+
+/* Capability/repair controls stay reachable on small browser previews and TV. */
+.tv-support-dialog { z-index: 25; }
+.tv-support-card { width: 760px; max-width: 92vw; max-height: 90vh; overflow-y: auto; text-align: left; }
+.tv-support-card .player-options { position: static; width: auto; padding: 0; }
+.tv-support-card h3 { margin-top: 24px; }
+.tv-support-card .player-option { white-space: normal; }
+.tv-support-card #tv-support-close { margin-top: 20px; }
+.tv-support-dialog { padding: 24px; }
+.tv-support-card, .legacy-webos .tv-support-card { width: 760px; max-width: 100%; box-sizing: border-box; }
+.tv-support-card .player-options, .legacy-webos .tv-support-card .player-options { width: 100%; max-width: none; background: transparent; box-shadow: none; }
+@media (max-width: 600px) {
+  .tv-support-dialog { padding: 12px; }
+  .tv-support-card { padding: 24px; }
+  .tv-support-card h2 { font-size: 26px; line-height: 1.25; }
+  .tv-support-card .player-options-note, .tv-support-card .player-option { font-size: 16px; }
+  .tv-support-card .button { min-width: 0; }
+}
