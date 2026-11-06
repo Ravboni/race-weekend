@@ -11,5 +11,10 @@
   "resolution": "1920x1080",
   "requiredACG": [],
   "disableBackHistoryAPI": false,
-  "supportTouchMode": false
+  "supportTouchMode": false,
+  "mediaExtension": {
+    "ums": {
+      "disableMediaPlayerManager": true
+    }
+  }
 }

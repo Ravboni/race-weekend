@@ -75,6 +75,20 @@ const state = {
   subtitleManual: false,
   updateInstalling: false,
   lastDashHeights: [],
+  // Picture-in-picture; see the "Picture-in-picture" section.
+  pip: null,
+  pipCapable: false,
+  tvCapabilities: null,
+  pipClient: null,
+  pipRootSession: false,
+  pipHeartbeat: null,
+  pipEnding: null,
+  pipProbe: null,
+  pipActivating: false,
+  mainManifest: null,
+  carDigits: "",
+  carDigitTimer: null,
+  uhdNoticeFor: "",
 };
 
 function element(tagName, className, text) {
@@ -112,12 +126,12 @@ function getMenuEntries(menuData) {
     .filter((item) => item.title && item.uri && item.title !== "Search");
 }
 
-function showToast(message) {
+function showToast(message, duration = 2500) {
   const toast = document.getElementById("toast");
   toast.textContent = message;
   toast.classList.add("visible");
   window.clearTimeout(showToast.timeout);
-  showToast.timeout = window.setTimeout(() => toast.classList.remove("visible"), 2500);
+  showToast.timeout = window.setTimeout(() => toast.classList.remove("visible"), duration);
 }
 
 function imageUrl(path, width, height) {
@@ -548,7 +562,7 @@ function showDetail(item, fullMetadata) {
   document.getElementById("detail-description").textContent = metadata.longDescription || metadata.shortDescription || eventInfo.Global_Title || "Watch on F1 TV.";
   document.getElementById("detail-note").textContent = metadata.locked ? "This content needs an eligible F1 TV subscription." : "Included with your F1 TV subscription.";
   document.getElementById("play-button").textContent = metadata.locked ? "View subscription options" : "Play";
-  const streams = (metadata.additionalStreams || []).filter((stream) => /^\d{1,12}$/.test(String(stream.channelId || "")));
+  const streams = playableStreams(metadata);
   const picker = document.getElementById("channel-picker");
   const options = document.getElementById("channel-options");
   options.replaceChildren();
@@ -561,7 +575,7 @@ function showDetail(item, fullMetadata) {
     state.selectedChannelId = String(selected.channelId);
     streams.forEach((stream) => {
       const id = String(stream.channelId);
-      const label = String(stream.title || stream.reportingName || stream.type || "Feed").slice(0, 50);
+      const label = streamTitle(stream, 50);
       const button = element("button", `channel-option focusable${id === state.selectedChannelId ? " is-selected" : ""}`, label);
       button.type = "button";
       button.setAttribute("aria-pressed", id === state.selectedChannelId ? "true" : "false");
@@ -595,12 +609,42 @@ function playerOption(label, selected, onClick, disabled = false) {
 function renderPlayerSources() {
   const host = document.getElementById("player-source-options");
   if (!host) return;
+  // Re-rendering replaces the buttons; put remote focus back on the same one.
+  const focused = host.contains(document.activeElement) ? document.activeElement : null;
+  const focusedChannel = focused?.dataset.channel || "";
+  const focusedAction = focused?.dataset.action || "";
+  const focusedPip = Boolean(focused?.classList.contains("player-pip-option"));
   host.replaceChildren();
-  const streams = (state.selectedItem?.metadata?.additionalStreams || [])
-    .filter((stream) => /^\d{1,12}$/.test(String(stream.channelId || "")));
+  renderPipAvailability(host);
+  const streams = playerStreams();
   if (!streams.length) {
     host.append(element("p", "player-options-note", "No alternate video sources are available for this programme."));
     return;
+  }
+  const pip = state.pip;
+  if (state.pipCapable) {
+    host.append(element("p", "player-options-note", pip
+      ? `Picture-in-picture: ${feedLabel(pip.channelId)}. Type a car number to change it (the same number again: full screen), 0 0 to close it; the blue button moves it.`
+      : "PiP opens a feed in a small window. Type a car number to open that driver's onboard."));
+    if (pip) {
+      const limits = state.tvCapabilities.pip;
+      const qualities = element("div", "player-pip-actions");
+      [360, 540, 720, 1080].filter((height) => height <= limits.maxSubHeight).forEach((height) => {
+        const choice = playerOption(`${height}p`, pipQuality() === height, () => changePipQuality(height));
+        choice.dataset.action = `pip-quality-${height}`;
+        qualities.append(choice);
+      });
+      host.append(qualities);
+      const actions = element("div", "player-pip-actions");
+      const swap = playerOption("Swap", false, swapPip);
+      swap.dataset.action = "swap";
+      const move = playerOption("Move", false, movePip, !pip.box);
+      move.dataset.action = "move";
+      const close = playerOption("Close PiP", false, () => closePip());
+      close.dataset.action = "close";
+      actions.append(swap, move, close);
+      host.append(actions);
+    }
   }
   const driverColors = { NOR: "#ff7900", VER: "#3476d1", BOR: "#ff321d", HAD: "#3476d1", GAS: "#079edb", ANT: "#21ddc0", ALO: "#209979", LEC: "#ef0038", STR: "#209979", ALB: "#1769d2", HER: "#aaaeb5", HUL: "#ff321d", LAW: "#648af2", OCO: "#d8dcdf", LIN: "#648af2" };
   streams.forEach((stream, index) => {
@@ -610,16 +654,13 @@ function renderPlayerSources() {
       host.append(divider);
     }
     const id = String(stream.channelId);
-    const label = String(stream.title || stream.reportingName || stream.type || "Feed").slice(0, 70);
+    const label = streamTitle(stream);
     const primary = index < 4;
     const button = playerOption(label, id === state.selectedChannelId, () => {
       if (id === state.selectedChannelId) { closePlayerPanel(); return; }
-      state.selectedChannelId = id;
-      renderPlayerSources();
-      document.querySelector("#player-source-options .player-option.is-selected")?.focus();
-      document.getElementById("player-status-text").textContent = `Switching to ${label}…`;
-      startPlayback(state.selectedItem).catch((error) => showPlayerError(error.message));
+      switchMainFeed(id);
     });
+    button.dataset.channel = id;
     button.classList.toggle("player-feed-option", primary);
     const icon = element("span", primary ? `player-source-icon source-icon-${index}` : "player-driver-dot");
     if (primary) icon.textContent = ["◉", "◎", "♧", "▥"][index] || "•";
@@ -630,8 +671,36 @@ function renderPlayerSources() {
     }
     const text = element("span", "player-option-label", label);
     button.replaceChildren(icon, text);
-    host.append(button);
+    if (!state.pipCapable) {
+      host.append(button);
+      return;
+    }
+    const inPip = pip?.channelId === id;
+    const onScreen = id === state.selectedChannelId;
+    // With the window open, tags say which feed is where.
+    if (pip && (onScreen || inPip)) button.append(element("span", "player-source-tag", onScreen ? "Full screen" : "In PiP"));
+    // PiP on the full-screen feed swaps it into the window (nothing to do without one).
+    const pipButton = playerOption("PiP", inPip, () => {
+      if (inPip) closePip();
+      else setPipChannel(id);
+    }, onScreen && !pip);
+    pipButton.classList.add("player-pip-option");
+    pipButton.dataset.channel = id;
+    pipButton.setAttribute("aria-label", inPip ? `Close picture-in-picture (${label})`
+      : onScreen ? `Swap ${label} into picture-in-picture` : `${label} in picture-in-picture`);
+    const row = element("div", "player-source-row");
+    row.append(button, pipButton);
+    host.append(row);
   });
+  if (focused) {
+    const selector = focusedAction
+      ? `[data-action="${focusedAction}"]`
+      : `${focusedPip ? ".player-pip-option" : ".player-option:not(.player-pip-option)"}[data-channel="${focusedChannel}"]`;
+    const target = host.querySelector(`${selector}:not([disabled])`)
+      || host.querySelector(`.player-option:not(.player-pip-option)[data-channel="${focusedChannel}"]`)
+      || host.querySelector(".player-option:not([disabled])");
+    target?.focus();
+  }
 }
 
 // F1 streams tag tracks with bare language codes ("eng", "fra_subtitle"); turn
@@ -677,6 +746,10 @@ function renderPlayerAudio() {
   host.replaceChildren();
   if (state.hlsPlayer) {
     renderHlsAudio(host);
+    return;
+  }
+  if (usingTvPlayer()) {
+    renderNativeAudio(host);
     return;
   }
   const player = state.dashPlayer;
@@ -742,6 +815,10 @@ function renderPlayerSubtitles() {
   host.replaceChildren();
   if (state.hlsPlayer) {
     renderHlsSubtitles(host);
+    return;
+  }
+  if (usingTvPlayer()) {
+    host.append(element("p", "player-options-note", "Subtitles are not available while picture-in-picture is on."));
     return;
   }
   const player = state.dashPlayer;
@@ -837,6 +914,10 @@ function renderQualityOptions(host) {
     const heights = state.lastDashHeights.length ? state.lastDashHeights : [360, 540, 720, 1080];
     heights.forEach((height) => host.append(playerOption(`${height}p`, false, () => leaveUhd(height))));
     renderUhdOption(host);
+    return;
+  }
+  if (usingTvPlayer()) {
+    host.append(element("p", "player-options-note", "While picture-in-picture is on, the TV picks the quality (up to 1080p). Close picture-in-picture to choose it."));
     return;
   }
   const player = state.dashPlayer;
@@ -1359,6 +1440,10 @@ function currentTrackLanguages() {
         subtitleLanguage: hls.subtitleTrack >= 0 ? hls.subtitleTracks[hls.subtitleTrack]?.lang || "" : "",
       };
     }
+    if (usingTvPlayer()) {
+      const audio = nativeAudioTracks().find((track) => track.enabled);
+      return { audioLanguage: audio?.language || rememberedAudioLanguage(), subtitleLanguage: rememberedSubtitleLanguage() };
+    }
     const player = state.dashPlayer;
     if (player) {
       const audio = player.getCurrentTrackFor("audio");
@@ -1638,6 +1723,7 @@ function showPlayerPanel(kind, { pushHistory = true, focus = true } = {}) {
   document.getElementById("player-sources-panel").hidden = kind !== "sources";
   document.getElementById("player-language-panel").hidden = kind !== "language";
   state.playerPanel = kind;
+  placePip();
   if (focus) document.getElementById(kind === "sources" ? "player-sources-close" : "player-language-close").focus();
 }
 
@@ -1651,6 +1737,7 @@ function closePlayerPanel({ fromHistory = false } = {}) {
   document.getElementById("player-sources-panel").hidden = true;
   document.getElementById("player-language-panel").hidden = true;
   state.playerPanel = null;
+  placePip();
   const toggleId = previousPanel === "language" ? "player-language-toggle" : "player-sources-toggle";
   document.getElementById(toggleId)?.focus();
   state.playerTimer = window.setTimeout(() => hidePlayerChrome(), 5000);
@@ -1662,6 +1749,7 @@ function openPlayerOptions() {
 
 function handleAppPopState(event) {
   const destination = event.state;
+  if (!document.getElementById("tv-support-dialog").hidden && destination?.modal !== "tv-support") closeTvSupport({ fromHistory: true });
   if (!document.getElementById("update-dialog").hidden && destination?.modal !== "update") closeUpdateDialog({ fromHistory: true });
   if (!document.getElementById("sign-out-dialog").hidden && destination?.modal !== "logout") closeSignOutConfirmation({ fromHistory: true });
   if (!document.getElementById("sign-in-dialog").hidden && destination?.modal !== "signin") closeSignIn({ fromHistory: true });
@@ -1671,6 +1759,8 @@ function handleAppPopState(event) {
   if (previousView === "player" && destination.screen !== "player") {
     // Invalidate a start that is still awaiting the network (4K check, PLAY).
     state.playbackSeq += 1;
+    clearCarNumber();
+    closePip({ restart: false });
     stopPlayback();
   }
   setView(destination.screen || "home", { pushHistory: false });
@@ -2161,15 +2251,752 @@ async function beginSignIn() {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Picture-in-picture
+//
+// A second feed of the programme (an onboard, the tracker…) in a small window
+// over the main one. webOS 6 and later only, and only with DRM-free feeds: F1 TV
+// serves the HD feeds of these TVs in the clear. Measured on an LG 43UP7500
+// (webOS 6.5.3):
+// - A browser (MSE) <video> always asks the TV for its largest decode size
+//   (4096x2304), which takes all four video decoders, so a second video could
+//   never start. While the window is open both feeds play on the TV's own DASH
+//   player instead (a <video> with a <source> carrying a webOS mediaOption),
+//   the main feed capped at 1080p: two decoders each.
+// - The window's feed goes to the TV's second video path (the sub scaler) with
+//   avSink.videoSink "sub_video". Naming an audio sink keeps it from taking the
+//   main sound output from the main feed; the window stays muted.
+// - appinfo.json turns off the webOS media player manager ("mediaExtension"),
+//   which otherwise pauses one video as soon as another one starts.
+// Closing the window returns to the browser player at the same position.
+// Until then subtitles and the quality menu are off; audio languages stay.
+// Typing a car number on the remote opens that driver's onboard in the window
+// (or full screen on TVs without picture-in-picture).
+// ---------------------------------------------------------------------------
+const PIP_DRM_MESSAGE = "Picture-in-picture needs DRM-free feeds, which this TV does not get.";
+const CAR_NUMBER_DELAY = 1500;
+
+function playableStreams(metadata) {
+  return (metadata?.additionalStreams || []).filter((stream) => /^\d{1,12}$/.test(String(stream.channelId || "")));
+}
+
+function playerStreams() {
+  return playableStreams(state.selectedItem?.metadata);
+}
+
+function streamTitle(stream, length = 70) {
+  return String(stream?.title || stream?.reportingName || stream?.type || "Feed").slice(0, length);
+}
+
+function feedLabel(channelId) {
+  const stream = playerStreams().find((entry) => String(entry.channelId) === String(channelId));
+  const title = streamTitle(stream);
+  return Number(stream?.racingNumber) > 0 ? `${stream.racingNumber} ${title}` : title;
+}
+
+// True while the main feed plays on the TV's own player (picture-in-picture open).
+function usingTvPlayer() {
+  return state.lastEngine === "native";
+}
+
+// Capability decisions are session observations, never persisted as a root flag.
+const PIP_QUALITY_KEY = "raceWeekendPipHeight";
+const PIP_ACTIVATION_KEY = "raceWeekendPipActivation";
+
+function renderTvSupport() {
+  const dialog = document.getElementById("tv-support-dialog");
+  if (!dialog || dialog.hidden) return;
+  const host = document.getElementById("tv-support-options");
+  const action = host.contains(document.activeElement) ? document.activeElement.dataset.action : "";
+  host.replaceChildren();
+  renderPipAvailability(host);
+  if (action) {
+    const target = host.querySelector(`[data-action="${action}"]`);
+    if (target && !target.disabled) target.focus();
+    else document.getElementById("tv-support-close").focus();
+  }
+}
+
+function openTvSupport() {
+  const dialog = document.getElementById("tv-support-dialog");
+  if (!dialog.hidden) return;
+  state.tvSupportReturnFocus = document.activeElement;
+  const current = window.history.state?.f1tv ? window.history.state : { f1tv: true, screen: state.currentView };
+  window.history.pushState({ ...current, modal: "tv-support" }, "", window.location.href);
+  dialog.hidden = false;
+  renderTvSupport();
+  document.getElementById("tv-support-close").focus();
+  refreshPipCapabilities(true);
+}
+
+function closeTvSupport({ fromHistory = false } = {}) {
+  const dialog = document.getElementById("tv-support-dialog");
+  if (dialog.hidden) return;
+  if (!fromHistory && window.history.state?.modal === "tv-support") {
+    window.history.back(); return;
+  }
+  dialog.hidden = true;
+  const target = state.tvSupportReturnFocus;
+  state.tvSupportReturnFocus = null;
+  if (target && !target.closest("[hidden]") && target.getClientRects().length) target.focus();
+}
+
+function renderCbcsSupport(host) {
+  const fix = state.tvCapabilities?.cbcs;
+  const title = element("h3", "", "HD playback compatibility");
+  host.append(title);
+  const detail = !fix ? "The HD compatibility fix could not be checked. Root access through Homebrew Channel is needed to inspect it."
+    : fix.active ? "The CBCS HD fix is already active."
+    : fix.needed && fix.supported ? "This TV has the CBCS issue that can prevent protected 720p/1080p playback. The verified HD fix is available."
+    : "No supported CBCS HD fix is required or available for this library.";
+  host.append(element("p", "player-options-note", detail));
+  if (fix?.needed && fix.canApply === true && !fix.active && state.tvCapabilities.root === "available") {
+    host.append(element("p", "player-options-note", "Applies the verified fix to this TV's own library without replacing the firmware file. It remains enabled after reboot. Restart Race Weekend afterward. This does not fix 4K playback."));
+    const apply = playerOption(state.cbcsApplying ? "Applying HD fix…" : "Apply HD playback fix", false, applyCbcsFix, state.cbcsApplying || Boolean(state.pip));
+    apply.dataset.action = "apply-hd-fix";
+    host.append(apply);
+  }
+  // Only this repair's own overlay can be removed; legacy/external ones are kept.
+  if (fix?.active && fix.canDisable === true && state.tvCapabilities.root === "available") {
+    host.append(element("p", "player-options-note", "Disabling restores the original library and turns off the boot hook. Restart Race Weekend afterward."));
+    const disable = playerOption(state.cbcsApplying ? "Disabling HD fix…" : "Disable HD fix", false, disableCbcsFix, state.cbcsApplying || Boolean(state.pip));
+    disable.dataset.action = "disable-hd-fix";
+    host.append(disable);
+  }
+}
+
+async function disableCbcsFix() {
+  const fix = state.tvCapabilities?.cbcs;
+  if (state.cbcsApplying || state.pip || !fix?.active || fix.canDisable !== true || state.tvCapabilities.root !== "available") return;
+  state.cbcsApplying = true;
+  renderTvSupport();
+  try {
+    const result = await state.pipClient.cbcsCommand("disable");
+    state.tvCapabilities.cbcs = result;
+    if (result.active) throw new Error("The HD fix could not be disabled on this TV.");
+    showToast("HD fix disabled. Close and reopen Race Weekend before playing.");
+  } catch (error) { showToast(error.message); }
+  finally { state.cbcsApplying = false; renderTvSupport(); }
+}
+
+async function applyCbcsFix() {
+  const fix = state.tvCapabilities?.cbcs;
+  if (state.cbcsApplying || state.pip || !fix?.needed || fix.canApply !== true || state.tvCapabilities.root !== "available") return;
+  state.cbcsApplying = true;
+  renderTvSupport();
+  try {
+    const result = await state.pipClient.cbcsCommand("apply");
+    state.tvCapabilities.cbcs = result;
+    if (!result.active) throw new Error("The HD fix could not be applied to this TV.");
+    showToast(result.restartRequired ? "HD fix applied. Close and reopen Race Weekend before playing." : "HD playback fix is active.");
+  } catch (error) { showToast(error.message); }
+  finally { state.cbcsApplying = false; renderTvSupport(); }
+}
+
+function pipQuality() {
+  return window.RaceWeekendPip.subHeight(state.tvCapabilities, readSetting(PIP_QUALITY_KEY));
+}
+
+function renderPipAvailability(host) {
+  if (host.id !== "tv-support-options") {
+    const open = playerOption("TV playback support", false, openTvSupport);
+    open.dataset.action = "tv-support";
+    host.append(open);
+    if (state.tvCapabilities?.pip.available) host.append(element("p", "player-options-note", `PiP: up to ${state.tvCapabilities.pip.mainHeight}p + ${state.tvCapabilities.pip.maxSubHeight}p.`));
+    return;
+  }
+  const tv = state.tvCapabilities;
+  if (!tv) {
+    host.append(element("p", "player-options-note", "Checking this TV's picture-in-picture support…"));
+    return;
+  }
+  const rootLabel = { available: "available", unavailable: "unavailable", unknown: "not confirmed" }[tv.root];
+  host.append(element("p", "player-options-note", `${tv.model} · webOS ${tv.release || "unknown"} · Root access: ${rootLabel}`));
+  if (tv.pip.available) {
+    host.append(element("p", "player-options-note", `PiP limit: main ${tv.pip.mainHeight}p, window ${tv.pip.maxSubHeight}p, up to ${tv.pip.maxFrameRate} fps.`));
+  } else {
+    host.append(element("p", "player-options-note", tv.pip.reason));
+  }
+  if (tv.pip.canActivate) {
+    host.append(element("p", "player-options-note", "Enabling support restarts TV apps and briefly interrupts picture and sound. Race Weekend will reopen. This does not root your TV."));
+    const button = playerOption(state.pipActivating ? "Enabling PiP…" : "Enable PiP support", false, activatePipSupport, state.pipActivating);
+    button.dataset.action = "enable-pip";
+    host.append(button);
+  }
+  if (tv.pip.canDeactivate && !state.pip) {
+    const disable = playerOption("Disable PiP support (restarts TV apps)", false, () => activatePipSupport(false), state.pipActivating);
+    disable.dataset.action = "disable-pip";
+    host.append(disable);
+  }
+  renderCbcsSupport(host);
+  const refresh = playerOption("Check TV support again", false, () => refreshPipCapabilities(true), Boolean(state.pipProbe) || Boolean(state.pip));
+  refresh.dataset.action = "check-pip";
+  host.append(refresh);
+}
+
+function refreshPipCapabilities(force = false) {
+  if (state.pipProbe) return state.pipProbe;
+  if (state.pip && force) return Promise.resolve(state.tvCapabilities);
+  if (!state.pipClient) state.pipClient = window.RaceWeekendPip.createClient(window);
+  state.pipProbe = Promise.all([state.pipClient.deviceInfo(), state.pipClient.rootStatus(), webosRelease()]).then(async ([device, root, release]) => {
+    state.tvCapabilities = window.RaceWeekendPip.resolve({
+      isWebOS: Boolean(window.PalmSystem), userAgent: navigator.userAgent,
+      device: { ...webosDeviceInfo(), ...device }, release: release || device.sdkVersion,
+      root: root.root, companion: root.companion,
+    });
+    state.pipCapable = state.tvCapabilities.pip.available;
+    state.tvCapabilities.cbcs = root.root === "available"
+      ? await state.pipClient.cbcsCommand("status").catch(() => null) : null;
+    if (readSetting(PIP_ACTIVATION_KEY)) {
+      writeSetting(PIP_ACTIVATION_KEY, null);
+      showToast(state.pipCapable ? "Picture-in-picture support is ready." : "PiP support could not be enabled on this TV.");
+    }
+    return state.tvCapabilities;
+  }).then((capabilities) => {
+    state.pipProbe = null;
+    if (state.playerPanel === "sources") renderPlayerSources();
+    renderTvSupport();
+    return capabilities;
+  }, () => {
+    state.pipProbe = null;
+    state.pipCapable = false;
+    return null;
+  });
+  return state.pipProbe;
+}
+
+async function activatePipSupport(enable = true) {
+  const capability = state.tvCapabilities?.pip;
+  if (state.pipActivating || state.pip || !capability || !(enable ? capability.canActivate : capability.mode === "root-c9")) return;
+  state.pipActivating = true;
+  if (enable) writeSetting(PIP_ACTIVATION_KEY, "1");
+  renderTvSupport();
+  try {
+    const result = await state.pipClient.rootCommand(enable ? "activate" : "deactivate");
+    if (enable && !result.ready && result.reason !== "activating") throw new Error("PiP support could not be enabled for this firmware.");
+    if (!enable && result.reason !== "deactivating" && result.reason !== "inactive") throw new Error("PiP support is busy. Check TV support and try again.");
+    showToast("Restarting TV apps. Race Weekend will reopen…");
+  } catch (error) {
+    writeSetting(PIP_ACTIVATION_KEY, null);
+    showToast(error.message);
+  } finally {
+    state.pipActivating = false;
+    // If a service restart fails, the viewer can recheck rather than stay locked.
+    window.setTimeout(() => refreshPipCapabilities(true), 12000);
+  }
+}
+
+async function beginPipSession(pip) {
+  if (state.pipEnding) await state.pipEnding;
+  if (state.pipServiceReset) await state.pipServiceReset;
+  if (state.pip !== pip || state.currentView !== "player" || document.hidden) throw new Error("Picture-in-picture was cancelled.");
+  if (state.tvCapabilities?.pip.mode !== "root-c9" || state.pipRootSession) return;
+  if (!state.pipBeginning) {
+    state.pipBeginning = state.pipClient.rootCommand("begin").then((result) => {
+      state.pipBeginning = null;
+      return result;
+    }, (error) => { state.pipBeginning = null; throw error; });
+  }
+  const result = await state.pipBeginning;
+  if (!result.ready || !result.active) throw new Error("PiP support is no longer active. Check TV support in Sources.");
+  if (state.pip !== pip || state.currentView !== "player" || document.hidden) {
+    throw new Error("Picture-in-picture was cancelled.");
+  }
+  if (state.pipRootSession) return;
+  state.pipRootSession = true;
+  let checking = false;
+  state.pipHeartbeat = window.setInterval(async () => {
+    if (checking || !state.pipRootSession || state.pip !== pip) return;
+    checking = true;
+    try {
+      const status = await state.pipClient.rootCommand("heartbeat");
+      if (!status.active) throw new Error("PiP support stopped.");
+    } catch (_error) {
+      if (state.pip === pip && state.pipRootSession) {
+        state.pipCapable = false;
+        closePip();
+        showToast("Picture-in-picture support stopped. Playing one feed.");
+      }
+    } finally { checking = false; }
+  }, 3000);
+}
+
+function endPipSession() {
+  window.clearInterval(state.pipHeartbeat);
+  state.pipHeartbeat = null;
+  if (!state.pipRootSession && !state.pipBeginning) return;
+  state.pipRootSession = false;
+  const ending = Promise.resolve(state.pipBeginning).catch(() => {}).then(() => state.pipClient.rootCommand("end")).catch(() => {});
+  state.pipEnding = ending;
+  ending.then(() => { if (state.pipEnding === ending) state.pipEnding = null; });
+}
+
+function changePipQuality(height) {
+  if (!state.pip || !state.tvCapabilities) return;
+  writeSetting(PIP_QUALITY_KEY, String(window.RaceWeekendPip.subHeight(state.tvCapabilities, height)));
+  removePipVideo(state.pip);
+  startPipVideo();
+  renderPlayerSources();
+}
+
+// webOS 6+ can still play the original MPD under native limits when the local
+// service cannot listen (for example, the legacy root bridge holds its port).
+async function preparePipManifest(url, role, height) {
+  try { return await state.pipClient.prepare(url, role, height); } catch (error) {
+    if (state.tvCapabilities?.pip.mode === "native" && error?.serviceUnavailable) return null;
+    throw error;
+  }
+}
+
+function nativeLimits(height) {
+  return { maxWidth: Math.ceil(height * 16 / 9), maxHeight: height, maxFrameRate: 50 };
+}
+
+function nativeSourceType(option) {
+  return `application/dash+xml;mediaOption=${encodeURI(JSON.stringify({ option }))}`;
+}
+
+function nativeStartOption(seconds) {
+  return seconds > 0 ? { transmission: { playTime: { start: Math.round(seconds * 1000) } } } : {};
+}
+
+function nativeAudioTracks() {
+  const tracks = document.getElementById("player-video")?.audioTracks;
+  return tracks ? Array.from({ length: tracks.length }, (_, index) => tracks[index]) : [];
+}
+
+function renderNativeAudio(host) {
+  const tracks = nativeAudioTracks();
+  if (!tracks.length) {
+    host.append(element("p", "player-options-note", "Audio tracks appear when playback starts."));
+    return;
+  }
+  tracks.forEach((track, index) => {
+    host.append(playerOption(audioTrackLabel({ lang: track.language, labels: [track.label] }, index), track.enabled, () => {
+      tracks.forEach((other) => { other.enabled = other === track; });
+      rememberAudioLanguage(track.language);
+      window.setTimeout(() => {
+        renderPlayerAudio();
+        host.querySelector(".player-option.is-selected")?.focus();
+      }, 150);
+    }));
+  });
+}
+
+function pipVideo() {
+  return state.pip?.box?.querySelector("video") || null;
+}
+
+// Keep the window's feed with the main one after a seek, pause or play.
+function followMainInPip(main) {
+  const video = pipVideo();
+  if (!video || state.pip?.syncing) return;
+  if (main.paused) video.pause();
+  else video.play().catch(() => {});
+}
+
+function seekPipToMain(main) {
+  const video = pipVideo();
+  if (!video || state.playerLive || state.pip?.syncing) return;
+  if (state.tvCapabilities?.pip.mode !== "root-c9") { video.currentTime = main.currentTime; return; }
+  // Native seek/buffering emits playing again. Already aligned players must
+  // not enter another pause/seek cycle when that event arrives.
+  if (Math.abs(video.currentTime - main.currentTime) < 0.75) return;
+  const pip = state.pip;
+  const playing = !main.paused;
+  const position = Math.floor(main.currentTime / 2) * 2;
+  // One coordinated attempt per position: feeds whose segment boundaries cannot
+  // align within the tolerance keep their drift instead of re-seeking forever.
+  if (pip.syncTarget !== undefined && Math.abs(position - pip.syncTarget) < 10) return;
+  pip.syncTarget = position;
+  pip.syncing = true;
+  main.pause();
+  video.pause();
+  let mainDone = false, subDone = false;
+  const finish = (cancelled = false, resumeMain = true) => {
+    if (!pip.syncing) return;
+    window.clearTimeout(pip.syncTimer);
+    main.removeEventListener("seeked", mainSeeked);
+    video.removeEventListener("seeked", subSeeked);
+    pip.syncing = false;
+    if (state.pip !== pip || main !== document.getElementById("player-video") || state.currentView !== "player") return;
+    if (!cancelled && pipVideo() !== video) return;
+    if (playing && resumeMain) {
+      main.play().catch(() => {});
+      if (!cancelled) video.play().catch(() => {});
+    }
+  };
+  const mainSeeked = () => { mainDone = true; if (subDone) finish(); };
+  const subSeeked = () => { subDone = true; if (mainDone) finish(); };
+  main.addEventListener("seeked", mainSeeked);
+  video.addEventListener("seeked", subSeeked);
+  pip.cancelSync = (resumeMain) => finish(true, resumeMain);
+  pip.syncTimer = window.setTimeout(finish, 5000);
+  try { main.currentTime = position; video.currentTime = position; } catch (_error) { finish(); }
+}
+
+function startNativePlayback(video, stream, { resumeAt = 0, audioLanguage = "" } = {}) {
+  const status = document.getElementById("player-status-text");
+  state.audioTracks = [];
+  state.textTracks = [];
+  const source = document.createElement("source");
+  source.src = stream.manifest;
+  source.type = nativeSourceType({ adaptiveStreaming: nativeLimits(state.tvCapabilities.pip.mainHeight), ...nativeStartOption(state.playerLive ? 0 : resumeAt) });
+  let failed = false;
+  const fail = () => {
+    if (failed || video !== document.getElementById("player-video") || !usingTvPlayer()) return;
+    failed = true;
+    window.clearTimeout(state.nativeLoadTimer);
+    // Back to the browser player at the same position, without the window.
+    const position = resumePosition();
+    closePip({ restart: false });
+    showToast("The TV player could not play this feed. Picture-in-picture closed.");
+    restartPlayback({ resumeAt: position });
+  };
+  source.addEventListener("error", fail);
+  video.onerror = fail;
+  video.onloadedmetadata = () => {
+    const wanted = languageBase(audioLanguage);
+    const tracks = nativeAudioTracks();
+    const match = wanted && tracks.find((track) => languageBase(track.language) === wanted);
+    if (match) tracks.forEach((track) => { track.enabled = track === match; });
+    renderPlayerQuality();
+    renderPlayerAudio();
+    renderPlayerSubtitles();
+    updateTimeline();
+  };
+  // The window pauses while this feed buffers, then lines up with it again.
+  let pipBehind = true;
+  video.onplaying = () => {
+    window.clearTimeout(state.nativeLoadTimer);
+    status.textContent = "Playing on F1 TV";
+    if (pipBehind) {
+      pipBehind = false;
+      seekPipToMain(video);
+      followMainInPip(video);
+    }
+    startPipVideo();
+  };
+  video.onwaiting = () => {
+    status.textContent = "Buffering…";
+    pipBehind = true;
+    pipVideo()?.pause();
+  };
+  video.onplay = () => {
+    document.getElementById("player-toggle").textContent = "Pause";
+    followMainInPip(video);
+  };
+  video.onpause = () => {
+    document.getElementById("player-toggle").textContent = "Play";
+    followMainInPip(video);
+  };
+  video.onseeked = () => seekPipToMain(video);
+  video.ontimeupdate = updateTimeline;
+  video.onprogress = updateTimeline;
+  video.autoplay = true;
+  state.nativeLoadTimer = window.setTimeout(fail, 25000);
+  video.append(source);
+  video.load();
+  if (!state.playerPanel) video.focus();
+  window.clearInterval(state.timelineTimer);
+  state.timelineTimer = window.setInterval(updateTimeline, 1000);
+  state.playerTimer = window.setTimeout(() => hidePlayerChrome(), 5000);
+}
+
+const PIP_HINT_KEY = "raceWeekendPipHintSeen";
+const CAR_TIP_KEY = "raceWeekendCarTipSeen";
+const PIP_HINT_DURATION = 12000;
+
+// The first window ever opened explains its remote controls, once.
+function showPipHint() {
+  if (readSetting(PIP_HINT_KEY)) return;
+  writeSetting(PIP_HINT_KEY, "1");
+  const hint = document.getElementById("player-pip-hint");
+  if (!hint) return;
+  hint.hidden = false;
+  window.clearTimeout(showPipHint.timer);
+  showPipHint.timer = window.setTimeout(hidePipHint, PIP_HINT_DURATION);
+}
+
+function hidePipHint() {
+  window.clearTimeout(showPipHint.timer);
+  const hint = document.getElementById("player-pip-hint");
+  if (hint) hint.hidden = true;
+}
+
+// The first programme with driver onboards mentions the car-number shortcut, once.
+function showCarNumberTip() {
+  if (readSetting(CAR_TIP_KEY) || state.pip) return;
+  if (!playerStreams().some((stream) => Number(stream.racingNumber) > 0)) return;
+  writeSetting(CAR_TIP_KEY, "1");
+  showToast(state.pipCapable
+    ? "Tip: type a car number on the remote (1 6 for car 16) to watch that onboard in picture-in-picture."
+    : "Tip: type a car number on the remote (1 6 for car 16) to switch to that onboard.", 8000);
+}
+
+const PIP_CORNER_KEY = "raceWeekendPipCorner";
+const PIP_CORNERS = ["top-right", "bottom-right", "bottom-left", "top-left"];
+const PIP_CORNER_NAMES = { "top-right": "top right", "bottom-right": "bottom right", "bottom-left": "bottom left", "top-left": "top left" };
+
+function pipCorner() {
+  const saved = readSetting(PIP_CORNER_KEY);
+  return PIP_CORNERS.includes(saved) ? saved : PIP_CORNERS[0];
+}
+
+// The window sits in the viewer's corner. Beside an open options panel, a
+// window on the right moves left so it stays visible.
+function placePip() {
+  const box = state.pip?.box;
+  if (!box) return;
+  const corner = pipCorner();
+  PIP_CORNERS.forEach((name) => box.classList.toggle(`pip-${name}`, name === corner));
+  const panel = state.playerPanel ? playerPanelElement(state.playerPanel) : null;
+  box.style.right = panel && !panel.hidden && corner.endsWith("right") ? `${panel.offsetWidth + 32}px` : "";
+}
+
+// Remote blue button or "Move" in Sources: the next corner, clockwise.
+function movePip() {
+  if (!state.pip?.box) return;
+  const next = PIP_CORNERS[(PIP_CORNERS.indexOf(pipCorner()) + 1) % PIP_CORNERS.length];
+  writeSetting(PIP_CORNER_KEY, next);
+  placePip();
+  showToast(`Picture-in-picture: ${PIP_CORNER_NAMES[next]}.`);
+}
+
+async function startPipVideo() {
+  const pip = state.pip;
+  const main = document.getElementById("player-video");
+  // The window opens once the main feed plays on the TV player.
+  if (!pip || pip.box || pip.loading || state.currentView !== "player" || !usingTvPlayer()
+    || !main || main.readyState < 2) return;
+  const contentId = currentContentId();
+  const seq = ++pip.seq;
+  pip.loading = true;
+  let stream = null;
+  let prepared = null;
+  try {
+    stream = await state.session.play(contentId, pip.channelId);
+    if (state.pip !== pip || seq !== pip.seq) return;
+    if (stream.drmType === "clear") prepared = await preparePipManifest(stream.manifest, "sub", pipQuality());
+  } catch (_error) { stream = null; }
+  if (state.pip !== pip || seq !== pip.seq) {
+    if (prepared) state.pipClient.release(prepared.id);
+    return;
+  }
+  if (prepared) { pip.manifest = prepared; stream = { ...stream, manifest: prepared.url }; }
+  pip.loading = false;
+  if (!stream || stream.drmType !== "clear") {
+    closePip();
+    showToast(stream ? PIP_DRM_MESSAGE : "Could not load that feed for picture-in-picture.");
+    return;
+  }
+  const box = element("div", "player-pip");
+  box.id = "player-pip";
+  const video = document.createElement("video");
+  video.className = "player-pip-video";
+  video.muted = true;
+  video.autoplay = true;
+  const source = document.createElement("source");
+  source.src = stream.manifest;
+  source.type = nativeSourceType({
+    adaptiveStreaming: nativeLimits(pipQuality()),
+    audioActivate: false,
+    avSink: { videoSink: { type: "sub_video" }, audioSink: { type: "no_sound" } },
+    ...nativeStartOption(state.playerLive ? 0 : main.currentTime),
+  });
+  const failed = () => {
+    if (state.pip !== pip || pip.box !== box) return;
+    closePip();
+    showToast("This TV could not play the second feed in picture-in-picture.");
+  };
+  video.addEventListener("error", failed);
+  source.addEventListener("error", failed);
+  // The main feed moved on while this one loaded: catch up once it plays.
+  // Chrome 53 (webOS 4) ignores addEventListener's `once`; remove it explicitly.
+  const firstPlaying = () => {
+    video.removeEventListener("playing", firstPlaying);
+    if (state.pip !== pip || pip.box !== box) return;
+    window.clearTimeout(pip.loadTimer);
+    if (main.paused) { video.pause(); return; }
+    seekPipToMain(main);
+  };
+  video.addEventListener("playing", firstPlaying);
+  video.addEventListener("canplay", () => {
+    if (state.pip !== pip || pip.box !== box) return;
+    window.clearTimeout(pip.loadTimer);
+    if (main.paused) video.pause();
+  });
+  pip.loadTimer = window.setTimeout(failed, 25000);
+  video.append(source);
+  box.append(video, element("span", "player-pip-label", feedLabel(pip.channelId)));
+  document.getElementById("player-view").insertBefore(box, document.getElementById("player-sources-panel"));
+  pip.box = box;
+  placePip();
+  showPipHint();
+  if (main.paused) video.pause();
+  if (state.playerPanel === "sources") renderPlayerSources();
+}
+
+function removePipVideo(pip, { resumeMain = true } = {}) {
+  if (!pip) return;
+  pip.seq += 1;
+  pip.loading = false;
+  window.clearTimeout(pip.loadTimer);
+  if (pip.manifest) { state.pipClient.release(pip.manifest.id); pip.manifest = null; }
+  const box = pip.box;
+  pip.box = null;
+  pip.syncTarget = undefined;
+  if (pip.cancelSync) { pip.cancelSync(resumeMain); pip.cancelSync = null; }
+  if (!box) return;
+  const video = box.querySelector("video");
+  if (video) {
+    video.pause();
+    video.replaceChildren();
+    video.load();
+  }
+  box.remove();
+}
+
+function openPip(channelId) {
+  const id = String(channelId);
+  if (!state.pipCapable || state.currentView !== "player" || !state.selectedItem) return;
+  if (state.pip) {
+    setPipChannel(id);
+    return;
+  }
+  if (id === state.selectedChannelId) {
+    showToast(`${feedLabel(id)} is already on screen.`);
+    return;
+  }
+  const resumeAt = resumePosition();
+  state.pip = { channelId: id, box: null, loading: false, seq: 0 };
+  document.getElementById("player-status-text").textContent = "Opening picture-in-picture…";
+  restartPlayback({ resumeAt });
+  if (state.playerPanel === "sources") renderPlayerSources();
+}
+
+function setPipChannel(channelId) {
+  const id = String(channelId);
+  const pip = state.pip;
+  if (!pip) {
+    openPip(id);
+    return;
+  }
+  if (id === pip.channelId) return;
+  if (id === state.selectedChannelId) {
+    swapPip();
+    return;
+  }
+  removePipVideo(pip);
+  pip.channelId = id;
+  startPipVideo();
+  if (state.playerPanel === "sources") renderPlayerSources();
+}
+
+// The window's feed goes full screen and the main feed takes the window.
+function swapPip() {
+  const pip = state.pip;
+  if (!pip) return;
+  const resumeAt = resumePosition();
+  const mainChannel = state.selectedChannelId;
+  removePipVideo(pip);
+  state.selectedChannelId = pip.channelId;
+  pip.channelId = mainChannel;
+  document.getElementById("player-status-text").textContent = `Switching to ${feedLabel(state.selectedChannelId)}…`;
+  restartPlayback({ resumeAt });
+  if (state.playerPanel === "sources") renderPlayerSources();
+}
+
+function closePip({ restart = true } = {}) {
+  const pip = state.pip;
+  if (!pip) return;
+  const resumeAt = resumePosition();
+  removePipVideo(pip, { resumeMain: false });
+  state.pip = null;
+  endPipSession();
+  hidePipHint();
+  if (restart && state.currentView === "player" && state.selectedItem) restartPlayback({ resumeAt });
+  if (state.playerPanel === "sources") renderPlayerSources();
+}
+
+// Full screen: a new main feed; the window's own feed swaps places instead.
+function switchMainFeed(channelId) {
+  const id = String(channelId);
+  if (id === state.selectedChannelId) return;
+  if (state.pip && id === state.pip.channelId) {
+    swapPip();
+    return;
+  }
+  state.selectedChannelId = id;
+  document.getElementById("player-status-text").textContent = `Switching to ${feedLabel(id)}…`;
+  // Replay feeds share one timeline: continue the new feed where the viewer was.
+  startPlayback(state.selectedItem, { resumeAt: resumePosition() }).catch((error) => showPlayerError(error.message));
+  if (state.playerPanel === "sources") renderPlayerSources();
+}
+
+function carNumberDigit(event, key) {
+  if (/^[0-9]$/.test(String(key))) return String(key);
+  if (event.keyCode >= 48 && event.keyCode <= 57) return String(event.keyCode - 48);
+  if (event.keyCode >= 96 && event.keyCode <= 105) return String(event.keyCode - 96);
+  return null;
+}
+
+function typeCarNumber(digit) {
+  hidePipHint();
+  window.clearTimeout(state.carDigitTimer);
+  state.carDigits = (state.carDigits + digit).slice(-2);
+  const entry = document.getElementById("player-car-entry");
+  entry.textContent = `Car ${state.carDigits}${state.carDigits.length < 2 ? "_" : ""}`;
+  entry.hidden = false;
+  // Car numbers have one or two digits: a second digit chooses at once.
+  state.carDigitTimer = window.setTimeout(chooseCarNumber, state.carDigits.length >= 2 ? 400 : CAR_NUMBER_DELAY);
+}
+
+function clearCarNumber() {
+  window.clearTimeout(state.carDigitTimer);
+  state.carDigitTimer = null;
+  state.carDigits = "";
+  const entry = document.getElementById("player-car-entry");
+  if (entry) entry.hidden = true;
+}
+
+function chooseCarNumber() {
+  const digits = state.carDigits;
+  const number = Number(digits);
+  clearCarNumber();
+  if (state.currentView !== "player" || !state.selectedItem) return;
+  // 0 0 closes the window.
+  if (digits === "00") {
+    if (state.pip) closePip();
+    return;
+  }
+  const stream = number > 0 && playerStreams().find((entry) => Number(entry.racingNumber) === number);
+  if (!stream) {
+    showToast(`No onboard camera for car ${number}.`);
+    return;
+  }
+  const id = String(stream.channelId);
+  if (id === state.selectedChannelId) {
+    showToast(`${feedLabel(id)} is already on screen.`);
+    return;
+  }
+  // The car already in the window, typed again, goes full screen.
+  if (state.pip && id === state.pip.channelId) swapPip();
+  else if (state.pipCapable) setPipChannel(id);
+  else switchMainFeed(id);
+}
+
 async function startPlayback(item, options = {}) {
   state.playbackSeq += 1;
   const playbackSeq = state.playbackSeq;
-  if (state.hlsPlayer || state.lastEngine === "hls") {
+  // With picture-in-picture open the main feed plays on the TV's own player.
+  const engine = state.pip ? "native" : "dash";
+  if (state.hlsPlayer || state.lastEngine !== engine) {
     stopPlayback();
     freshPlayerVideo();
   }
-  state.lastEngine = "dash";
-  const video = document.getElementById("player-video");
+  state.lastEngine = engine;
+  let video = document.getElementById("player-video");
   const status = document.getElementById("player-status-text");
   const title = item.metadata?.titleBrief || item.metadata?.title || "F1 TV";
   const contentId = item.metadata?.contentId || item.id;
@@ -2190,7 +3017,9 @@ async function startPlayback(item, options = {}) {
   state.subtitleChoiceMade = Boolean(subtitleLanguage);
   state.subtitleManual = false;
   try {
-    if (!options.skipUhd && uhdPreferred() && (await tvSupportsUhd())) {
+    if (state.pipEnding) await state.pipEnding;
+    if (playbackSeq !== state.playbackSeq || state.currentView !== "player") return;
+    if (!options.skipUhd && !state.pip && uhdPreferred() && (await tvSupportsUhd())) {
       status.textContent = "Checking 4K availability…";
       // Start from a fresh PLAY response; its playlist URLs are tokenized.
       const uhd = await uhdStreamFor(contentId, state.selectedChannelId, { maxAge: 60 * 1000 });
@@ -2199,11 +3028,44 @@ async function startPlayback(item, options = {}) {
         await startUhdPlayback(uhd, { ...options, audioLanguage, subtitleLanguage, playbackSeq });
         return;
       }
-      showToast("Ultra HD is not available for this video. Playing HD.");
+      // Once per programme: feed switches and picture-in-picture restart playback.
+      if (state.uhdNoticeFor !== contentId) {
+        state.uhdNoticeFor = contentId;
+        showToast("Ultra HD is not available for this video. Playing HD.");
+      }
       status.textContent = "Requesting your F1 TV stream…";
     }
     const stream = await state.session.play(contentId, state.selectedChannelId);
     if (playbackSeq !== state.playbackSeq || state.currentView !== "player") return;
+    if (engine === "native") {
+      const pip = state.pip;
+      if (stream.drmType === "clear") {
+        let prepared = null;
+        try {
+          await beginPipSession(pip);
+          if (playbackSeq !== state.playbackSeq || state.pip !== pip || state.currentView !== "player") return;
+          prepared = await preparePipManifest(stream.manifest, "main", state.tvCapabilities.pip.mainHeight);
+          if (playbackSeq !== state.playbackSeq || state.pip !== pip || state.currentView !== "player") {
+            state.pipClient.release(prepared?.id);
+            return;
+          }
+          state.mainManifest = prepared;
+          startNativePlayback(video, { ...stream, manifest: prepared ? prepared.url : stream.manifest }, { resumeAt: options.resumeAt, audioLanguage });
+          return;
+        } catch (_error) {
+          if (prepared) state.pipClient.release(prepared.id);
+          if (playbackSeq !== state.playbackSeq || state.currentView !== "player" || document.hidden) return;
+          showToast("Could not open compatible picture-in-picture. Playing one feed.");
+        }
+      } else showToast(PIP_DRM_MESSAGE);
+      // Preparation, root lease or DRM failure returns to normal playback.
+      closePip({ restart: false });
+      if (state.pipEnding) await state.pipEnding;
+      if (playbackSeq !== state.playbackSeq || state.currentView !== "player") return;
+      freshPlayerVideo();
+      state.lastEngine = "dash";
+      video = document.getElementById("player-video");
+    }
     if (!window.dashjs?.MediaPlayer) throw new Error("The TV player engine did not load.");
     const player = window.dashjs.MediaPlayer().create();
     state.dashPlayer = player;
@@ -2274,7 +3136,10 @@ async function startPlayback(item, options = {}) {
     player.on(window.dashjs.MediaPlayer.events.PLAYBACK_ERROR, () => {
       showPlayerError("F1 TV could not play this stream on the TV. Check the connection, subscription, and Widevine playback support.");
     });
-    video.onplaying = () => { status.textContent = "Playing on F1 TV"; };
+    video.onplaying = () => {
+      status.textContent = "Playing on F1 TV";
+      if (!state.playerPanel) showCarNumberTip();
+    };
     video.onwaiting = () => { status.textContent = "Buffering…"; };
     video.onplay = () => { document.getElementById("player-toggle").textContent = "Pause"; };
     video.onpause = () => { document.getElementById("player-toggle").textContent = "Play"; };
@@ -2292,6 +3157,9 @@ async function startPlayback(item, options = {}) {
     state.timelineTimer = window.setInterval(updateTimeline, 1000);
     state.playerTimer = window.setTimeout(() => hidePlayerChrome(), 5000);
   } catch (error) {
+    if (playbackSeq !== state.playbackSeq || state.currentView !== "player") return;
+    closePip({ restart: false });
+    stopPlayback();
     showPlayerError(error.message || "Could not start F1 TV playback.");
   }
 }
@@ -2305,6 +3173,7 @@ function showPlayerError(message) {
 
 function stopPlayback() {
   window.clearTimeout(state.playerTimer);
+  window.clearTimeout(state.nativeLoadTimer);
   window.clearInterval(state.timelineTimer);
   window.clearInterval(state.uhdWatchTimer);
   state.uhdWatchTimer = null;
@@ -2320,9 +3189,18 @@ function stopPlayback() {
   }
   const video = document.getElementById("player-video");
   if (video) {
+    // The next start sets its own handlers; the old ones must not see this unload.
+    ["onerror", "onloadedmetadata", "onplaying", "onwaiting", "onplay", "onpause", "onseeked", "ontimeupdate", "onprogress"]
+      .forEach((name) => { video[name] = null; });
     video.pause();
     video.removeAttribute("src");
+    // The TV-player engine plays a <source>; without it load() unloads the feed.
+    video.replaceChildren();
     video.load();
+  }
+  if (state.mainManifest) {
+    state.pipClient.release(state.mainManifest.id);
+    state.mainManifest = null;
   }
   state.playerLive = false;
   state.audioTracks = [];
@@ -2430,6 +3308,8 @@ function goLive() {
 }
 
 function focusScope() {
+  const supportDialog = document.getElementById("tv-support-dialog");
+  if (!supportDialog.hidden) return supportDialog;
   const updateDialog = document.getElementById("update-dialog");
   if (!updateDialog.hidden) return updateDialog;
   const signOutDialog = document.getElementById("sign-out-dialog");
@@ -2589,6 +3469,12 @@ function onRemoteKey(event) {
     37: "ArrowLeft", 38: "ArrowUp", 39: "ArrowRight", 40: "ArrowDown",
   }[event.keyCode] || ({ Left: "ArrowLeft", Up: "ArrowUp", Right: "ArrowRight", Down: "ArrowDown" }[event.key] || event.key));
   const editingText = document.activeElement.matches?.("input:not([type='range']), textarea, [contenteditable='true']");
+  if (!document.getElementById("tv-support-dialog").hidden) {
+    if (key === "Escape" || key === "Back" || (key === "Backspace" && !editingText) || event.keyCode === 461) {
+      event.preventDefault(); closeTvSupport();
+    } else moveFocus(event, key);
+    return;
+  }
   if (!document.getElementById("update-dialog").hidden) {
     if (key === "Escape" || key === "Back" || (key === "Backspace" && !editingText) || event.keyCode === 461) {
       event.preventDefault();
@@ -2625,6 +3511,18 @@ function onRemoteKey(event) {
     if (["ContextMenu", "Menu"].includes(key) || event.keyCode === 93) {
       event.preventDefault();
       showPlayerPanel("sources");
+      return;
+    }
+    // LG remote blue button (406): move the picture-in-picture window.
+    if (event.keyCode === 406 && state.pip?.box) {
+      event.preventDefault();
+      movePip();
+      return;
+    }
+    const digit = editingText ? null : carNumberDigit(event, key);
+    if (digit !== null) {
+      event.preventDefault();
+      typeCarNumber(digit);
       return;
     }
     const scrubber = document.getElementById("player-scrubber");
@@ -2751,6 +3649,30 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   document.getElementById("retry-button").addEventListener("click", loadHome);
   document.addEventListener("keydown", onRemoteKey);
+  state.pipClient = window.RaceWeekendPip.createClient(window);
+  state.pipServiceReset = state.pipClient.releaseAll();
+  refreshPipCapabilities();
+  document.getElementById("tv-support-close").addEventListener("click", () => closeTvSupport());
+  document.getElementById("sign-in-support").addEventListener("click", openTvSupport);
+  document.getElementById("sign-out-support").addEventListener("click", openTvSupport);
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden && state.pip) {
+      state.pipHiddenResume = { resumeAt: resumePosition(), ...currentTrackLanguages() };
+      // Invalidate an opening in flight so it cannot fall back to the browser player while hidden.
+      state.playbackSeq += 1;
+      closePip({ restart: false });
+      stopPlayback();
+    } else if (!document.hidden && !state.pip) {
+      refreshPipCapabilities(true);
+      const resume = state.pipHiddenResume;
+      state.pipHiddenResume = null;
+      if (resume && state.currentView === "player") restartPlayback(resume);
+    }
+  });
+  window.addEventListener("beforeunload", () => {
+    closePip({ restart: false });
+    stopPlayback();
+  });
   state.session = new window.F1Session();
   state.session.restore().then(setAccountLabel).catch(() => setAccountLabel());
   loadHome();

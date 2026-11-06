@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="color-scheme" content="dark">
     <meta name="theme-color" content="#090a0e">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'; script-src 'self' file:; style-src 'self' file: 'unsafe-inline'; font-src 'self' file:; img-src 'self' file: data: http://127.0.0.1:18741 https://f1tv.formula1.com https://*.formula1.com https://f1prodlive.akamaized.net; connect-src 'self' http://127.0.0.1:18741 https://api.github.com https://f1tv.formula1.com https://id.formula1.com https://api.formula1.com https://*.formula1.com https://f1prodlive.akamaized.net; media-src 'self' file: blob: https://f1tv.formula1.com https://*.formula1.com https://f1prodlive.akamaized.net; worker-src 'self' file: blob:">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'; script-src 'self' file:; style-src 'self' file: 'unsafe-inline'; font-src 'self' file:; img-src 'self' file: data: http://127.0.0.1:18741 https://f1tv.formula1.com https://*.formula1.com https://f1prodlive.akamaized.net; connect-src 'self' http://127.0.0.1:18741 https://api.github.com https://f1tv.formula1.com https://id.formula1.com https://api.formula1.com https://*.formula1.com https://f1prodlive.akamaized.net; media-src 'self' file: blob: http://127.0.0.1:18741 https://f1tv.formula1.com https://*.formula1.com https://f1prodlive.akamaized.net; worker-src 'self' file: blob:">
     <title>Race Weekend</title>
     <script src="compat.js"></script>
     <script src="bridge.js"></script>
@@ -14,6 +14,7 @@
     <script defer src="vendor/dash.all.min.js"></script>
     <script defer src="vendor/qrcode.js"></script>
     <script defer src="auth.js"></script>
+    <script src="pip-platform.js"></script>
     <script defer src="app.js?v=0.16.27-legacy"></script>
   </head>
   <body>
@@ -79,6 +80,17 @@
             <h3>Subtitles</h3>
             <div id="player-subtitle-options" class="player-option-list"><p class="player-options-note">Subtitle tracks appear when playback starts.</p></div>
           </aside>
+          <div id="player-car-entry" class="player-car-entry" aria-live="polite" hidden></div>
+          <div id="player-pip-hint" class="player-pip-hint" role="status" hidden>
+            <p class="player-pip-hint-title">Picture-in-picture</p>
+            <ul>
+              <li><span class="player-pip-key player-pip-key-blue" aria-hidden="true"></span>Blue button: move the window</li>
+              <li><span class="player-pip-key">1 6</span>Car number: change the onboard</li>
+              <li><span class="player-pip-key">Again</span>Same number again: full screen</li>
+              <li><span class="player-pip-key">0 0</span>Close the window</li>
+              <li><span class="player-pip-key">Sources</span>Swap, move or close</li>
+            </ul>
+          </div>
           <div id="player-error" class="player-error" hidden></div>
         </section>
 
@@ -119,6 +131,7 @@
           <p id="pairing-code" class="pairing-code" hidden></p>
           <p id="pairing-status" class="pairing-status">Starting secure sign-in…</p>
           <button id="sign-in-cancel" class="button button-secondary focusable" type="button">Cancel</button>
+          <button id="sign-in-support" class="button button-secondary focusable" type="button">TV playback support</button>
           <button id="sign-in-updates" class="button button-secondary focusable sign-in-updates" type="button">App updates</button>
         </div>
       </section>
@@ -131,10 +144,18 @@
             <button id="sign-out-cancel" class="button button-secondary focusable" type="button">Cancel</button>
             <button id="sign-out-confirm" class="button button-primary focusable" type="button">Log out</button>
           </div>
+          <button id="sign-out-support" class="button button-secondary focusable" type="button">TV playback support</button>
           <div class="sign-out-app">
             <span id="sign-out-version">Race Weekend</span>
             <button id="sign-out-updates" class="button button-secondary focusable" type="button">App updates</button>
           </div>
+        </div>
+      </section>
+      <section id="tv-support-dialog" class="sign-in-dialog tv-support-dialog" role="dialog" aria-modal="true" aria-labelledby="tv-support-title" hidden>
+        <div class="sign-in-card tv-support-card">
+          <h2 id="tv-support-title">TV playback support</h2>
+          <div id="tv-support-options" class="player-options"></div>
+          <button id="tv-support-close" class="button button-secondary focusable" type="button">Close</button>
         </div>
       </section>
       <section id="update-dialog" class="sign-in-dialog update-dialog" role="dialog" aria-modal="true" aria-labelledby="update-title" hidden>
