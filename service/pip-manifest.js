@@ -1,8 +1,8 @@
 "use strict";
 
 // The native DASH player does not consistently obey adaptiveStreaming limits.
-// Keep one AVC representation per period; never let a refresh restore the full
-// ladder. Audio/languages and the original segment timeline stay unchanged.
+// Keep only AVC representations within the limit (one adaptation set per period);
+// never let a refresh restore the full ladder. Audio/languages and the original segment timeline stay unchanged.
 var XML = require("./vendor/xmldom");
 var compat = require("./node-compat");
 var URL = compat.URL;
@@ -130,11 +130,14 @@ function filter(xml, sourceURL, limits) {
     var selected = candidates[0];
     if (!selected) throw new Error("No AVC representation within the video limit.");
     selectedHeight = Math.max(selectedHeight, selected.height);
+    // Keep the whole compatible ladder of the best set (ABR stays below the cap);
+    // every other video representation and set is removed.
+    var kept = candidates.filter(function (entry) { return entry.set === selected.set; }).map(function (entry) { return entry.rep; });
     sets.forEach(function (set) {
       var reps = children(set, "Representation");
       reps.forEach(function (rep) {
         var kind = mediaKind(rep, period);
-        if (rep !== selected.rep && kind !== "audio") set.removeChild(rep);
+        if (kept.indexOf(rep) < 0 && kind !== "audio") set.removeChild(rep);
       });
       if (!children(set, "Representation").length) { period.removeChild(set); return; }
       if (set === selected.set) {

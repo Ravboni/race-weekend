@@ -27,7 +27,7 @@ Base: PR #41 head `1e471ffdd27bb23277e0b2a233e9c3ac36d43256`, branch `feat/pictu
 
 ## Limits
 
-Real hardware validation used a replay, not a current live event or a long-duration soak. Dynamic MPD refresh is covered by fixtures; actual live playback and other firmware remain unverified. Root access does not imply support for arbitrary legacy TV models. The main cap during PiP is 1080p50 and the measured C9 secondary cap is 720p50. UHD/CBCS mosaics are outside this repair.
+Real hardware validation used a replay, not a current live event or a long-duration soak. Dynamic MPD refresh is covered by fixtures; actual live playback and other firmware remain unverified. The webOS 6+ path through the service-filtered manifest has no physical validation in this change. Root access does not imply support for arbitrary legacy TV models. The main cap during PiP is 1080p50 and the measured C9 secondary cap is 720p50. UHD/CBCS mosaics are outside this repair.
 
 ## Final TV state and artifact
 

@@ -74,3 +74,8 @@ test('prepares waiting for the HTTP listener still count toward the stream limit
   assert.equal(replies.filter(reply=>reply.returnValue).length,8);
  }finally{restore();pip.clear();}
 });
+
+test('a transient live refresh failure serves the last filtered manifest',async()=>{
+ let calls=0;const restore=mockFetch(()=>(++calls===1?{}:{status:500,body:''}));const {pip,call}=serviceHarness();const server=http.createServer((req,res)=>pip.handle(req,res));await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+ try{const prepared=await call('pipPrepare',{url:'https://f1prodlive.akamaized.net/a.mpd',role:'sub',maxHeight:720,maxFrameRate:50});const reply=await get(server,new URL(prepared.url).pathname);assert.equal(reply.status,200);assert.match(reply.body,/id="small"/);assert.doesNotMatch(reply.body,/id="large"/);assert.equal(calls,2);}finally{restore();await new Promise(resolve=>server.close(resolve));pip.clear();}
+});

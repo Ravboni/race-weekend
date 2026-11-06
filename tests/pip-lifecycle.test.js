@@ -86,3 +86,53 @@ test('main API failure closes the secondary and ends the root session',async()=>
   await a.state.pipEnding;
   assert.equal(a.state.pip,null);assert.equal(a.state.pipRootSession,false);assert.deepEqual(calls,['end']);
 });
+
+test('secondary first-playing handler runs once without addEventListener once (Chrome 53)',async()=>{
+  const a=app(),listeners={};let seeks=0;
+  const video={paused:false,pause(){},append(){},addEventListener(type,fn,options){if(options&&options.once) throw Error('once is unsupported on Chrome 53');(listeners[type]=listeners[type]||[]).push(fn);},removeEventListener(type,fn){listeners[type]=(listeners[type]||[]).filter(f=>f!==fn);}};
+  a.context.document.createElement=tag=>tag==='video'?video:{addEventListener(){}};
+  a.context.countSeek=()=>{seeks++;};
+  a.nodes.set('player-view',{insertBefore(){}});
+  a.run('element=function(){return {append(){},remove(){}};}; placePip=function(){}; showPipHint=function(){}; feedLabel=function(){return "";}; currentContentId=function(){return "race";}; seekPipToMain=function(){countSeek();};');
+  Object.assign(a.state,{pip:{channelId:'1009',seq:0,loading:false,box:null},currentView:'player',lastEngine:'native',tvCapabilities:{pip:{mode:'root-c9',maxSubHeight:720}},session:{play:async()=>({drmType:'clear',manifest:'https://f1prodlive.akamaized.net/a.mpd'})},pipClient:{prepare:async()=>({id:'sub',url:'http://127.0.0.1:18741/pip/ab.mpd'}),release(){}}});
+  await a.run('startPipVideo()');
+  [...listeners.playing].forEach(fn=>fn());(listeners.playing||[]).forEach(fn=>fn());
+  assert.equal(seeks,1);assert.equal((listeners.playing||[]).length,0);
+});
+
+test('hiding the app while root begin is pending does not start the browser player',async()=>{
+  const a=app(),pending=deferred(),opened=[];
+  const dash={updateSettings(){},on(){},initialize(){opened.push(true);},attachTTMLRenderingDiv(){}};
+  const MediaPlayer=()=>({create:()=>dash});MediaPlayer.events={};a.window.dashjs={MediaPlayer};
+  a.run('stopPlayback=function(){}; freshPlayerVideo=function(){}; showPlayerChrome=function(){}; hidePipHint=function(){}; setView=function(v){state.currentView=v;};');
+  Object.assign(a.state,{pip:{channelId:'1009',seq:0},pipCapable:true,currentView:'player',selectedItem:{id:'race'},tvCapabilities:{pip:{mode:'root-c9',mainHeight:1080}},session:{play:async()=>({drmType:'clear',manifest:'https://f1prodlive.akamaized.net/a.mpd'})},pipClient:{rootCommand:action=>action==='begin'?pending.promise:Promise.resolve({}),prepare:async()=>({id:'main',url:'http://127.0.0.1:18741/pip/ab.mpd'}),release(){}}});
+  const starting=a.run('startPlayback(state.selectedItem,{resumeAt:123})');
+  await new Promise(setImmediate);
+  a.context.document.hidden=true;a.run('closePip({restart:false})');
+  pending.resolve({ready:true,active:true});await starting;
+  assert.deepEqual(opened,[]);
+});
+
+test('unreachable C9 alignment is attempted once, then drift is accepted',()=>{
+  const a=app();let pauses=0;
+  const sub={currentTime:596,pause(){pauses++;},play(){return Promise.resolve();},addEventListener(){},removeEventListener(){}};
+  const main={currentTime:600.4,paused:false,pause(){pauses++;this.paused=true;},play(){this.paused=false;return Promise.resolve();},addEventListener(){},removeEventListener(){}};
+  a.nodes.set('player-video',main);
+  Object.assign(a.state,{pip:{seq:0,box:{querySelector:()=>sub}},currentView:'player',tvCapabilities:{pip:{mode:'root-c9'}},playerLive:false});
+  a.context.main=main;
+  a.run('seekPipToMain(main)');assert.equal(pauses,2);
+  a.state.pip.cancelSync(true);
+  // The sub landed on its own 6 s boundary again; another playing must not re-seek.
+  sub.currentTime=594;main.currentTime=600.9;
+  a.run('seekPipToMain(main)');assert.equal(pauses,2);assert.equal(a.state.pip.syncing,false);
+});
+
+test('webOS 6 plays the original manifest when the local PiP listener is unavailable',async()=>{
+  const a=app(),played=[];
+  a.context.played=played;
+  a.run('stopPlayback=function(){}; freshPlayerVideo=function(){}; showPlayerChrome=function(){}; setView=function(v){state.currentView=v;}; startNativePlayback=function(_v,stream){played.push(stream.manifest);};');
+  const unavailable=Object.assign(Error('Could not prepare a compatible PiP feed.'),{serviceUnavailable:true});
+  Object.assign(a.state,{pip:{channelId:'1009',seq:0},pipCapable:true,currentView:'player',selectedItem:{id:'race'},tvCapabilities:{pip:{mode:'native',mainHeight:1080}},session:{play:async()=>({drmType:'clear',manifest:'https://f1prodlive.akamaized.net/original.mpd'})},pipClient:{prepare:async()=>{throw unavailable;},release(){}}});
+  await a.run('startPlayback(state.selectedItem,{resumeAt:123})');
+  assert.deepEqual(played,['https://f1prodlive.akamaized.net/original.mpd']);assert.ok(a.state.pip);
+});

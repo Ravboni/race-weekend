@@ -36,7 +36,7 @@
 | --- | --- | --- |
 | LG OLED55C25LB (C2) | webOS 11.2.0 | End-to-end app use; 1080p playback, audio, feeds, and subtitle selection confirmed. The hardened catalog bridge was also exercised. |
 | LG OLED55E9PLA (E9) | webOS 4.5, firmware 05.50.00, Chromium 53 | Catalogue, phone pairing, remote navigation, and replay picture/audio confirmed. Playback above 540p was confirmed on this rooted test setup. |
-| LG 43UP7500PSF | webOS 6.5.3-47, Chrome 79 | Catalogue/artwork and the PR #41 dual-HD replay path were tested. |
+| LG 43UP7500PSF | webOS 6.5.3-47, Chrome 79 | Catalogue/artwork and the original PR #41 dual-HD replay path (direct MPD) were tested. The service-filtered PiP manifest path is not yet validated on this model. |
 | LG OLED55C9PSA (C9) | webOS 4.10.2, firmware 05.50.00, Chrome 53 | Rooted integration: race + onboard at 1080p50 / 720p50 with main audio; model/root detection and temporary PiP activation verified. Existing CBCS HD fix detected and preserved. |
 
 The app's former fixed 540p bitrate ceiling has been removed. New playback starts in adaptive **Auto** with no app-imposed 540p cap; manual quality choices are available per stream and are not saved for the next stream. The E9's higher-quality playback was confirmed on this rooted test setup after earlier tests at 540p. This does not remove decoder or firmware limitations on every webOS 4.5 TV: the maximum quality can still vary by model, firmware, stream, and network.
@@ -96,7 +96,8 @@ The app requests streams allowed by the signed-in account and uses webOS playbac
 - **Quality selection:** Playback starts in adaptive Auto and does not impose the former 540p bitrate ceiling. Available manual quality choices apply only to the current stream. Higher-than-540p playback was confirmed on the rooted OLED55E9PLA test setup; unmodified TVs with older decoders may still have hardware or firmware limits.
 - **Ultra HD and Live TV (webOS 4):** On the OLED C9 (webOS 4.10), 2160p50 plays at 50 fps only while the Live TV app is closed. webOS 4 keeps Live TV running behind apps opened over it; its tuner decoder then shares the video decoder, and 2160p drops to ~43 fps. On rooted TVs with the Homebrew Channel, Race Weekend closes a background Live TV before playing 2160p. Elsewhere, the default **Ultra HD Auto** detects the drop and continues at 1620p HDR. Fixed 2160p and 1620p choices are also available. Details: [Ultra HD playback](docs/ULTRA-HD.md#findings-oled-c9-webos-4x-and-live-tv).
 - **Subtitles:** New streams start with subtitles Off. F1 subtitle tracks remain selectable, and fragmented TTML rendering was confirmed in the C2 test build.
-- **PiP profiles:** modern TVs use native dual playback; the supported C9 needs Homebrew root and temporary companion activation. Secondary quality choices respect the detected model. Account → TV support also detects the known CBCS HD defect and offers the bundled repair when applicable. See [Picture-in-picture](docs/PICTURE-IN-PICTURE.md).
+- **Picture-in-picture profiles:** webOS 6 and later use native dual playback without root. The supported C9 needs Homebrew root and a temporary companion enabled from **TV playback support** (on the sign-in/account screen or in Sources); disabling it restores the TV services, and a reboot removes it. The window's quality choices respect the detected model. See [Picture-in-picture](docs/PICTURE-IN-PICTURE.md).
+- **CBCS HD repair (rooted TVs):** TV playback support also detects the known CBCS HD defect in the Widevine decryptor and offers the bundled repair. Unlike the PiP companion, this repair persists across reboots; it can be removed from the same screen only if this tool installed it. It does not fix 4K playback. See [repair behavior](root-cbcs/README.md).
 - Release v0.2.1 adds Ultra HD options and webOS 4 Live TV handling; the playback defaults and subtitle updates were introduced in v0.2.0.
 - Changes to F1's services may temporarily break sign-in, catalogue browsing, or playback.
 
@@ -113,7 +114,7 @@ npm ci --ignore-scripts
 ./scripts/package.sh
 ```
 
-The package is created under `dist/`. To install it, register your TV with `ares-setup-device`, then run:
+Run `npm test` for the local checks (see [Development checks](docs/PICTURE-IN-PICTURE.md#development-checks)). The package is created under `dist/`. To install it, register your TV with `ares-setup-device`, then run:
 
 ```sh
 ares-install --device myTV ./dist/com.ravboni.raceweekend_*.ipk
@@ -140,7 +141,7 @@ The repository banner is [`assets/brand/race-weekend-social-preview.jpg`](assets
 
 ## Third-party software and project license
 
-The project is licensed under the [MIT License](LICENSE). The app bundles dash.js and a QR-code generator; their license texts are in [`vendor/`](vendor/). Roboto's license is in [`assets/fonts/OFL.txt`](assets/fonts/OFL.txt). These bundled components retain their own licenses.
+The project is licensed under the [MIT License](LICENSE). The app bundles dash.js and a QR-code generator; their license texts are in [`vendor/`](vendor/). Roboto's license is in [`assets/fonts/OFL.txt`](assets/fonts/OFL.txt). The app service bundles @xmldom/xmldom ([`service/vendor/`](service/vendor/README.md)), and the CBCS HD repair script is vendored from lg-webos-cbcs-hd-fix with its MIT license in [`root-cbcs/`](root-cbcs/LICENSE). The C9 PiP hook libraries are built from this repository's own sources in [`root-pip/`](root-pip/README.md); no LG firmware library is distributed. These bundled components retain their own licenses.
 
 To report a security issue, follow [`SECURITY.md`](SECURITY.md). Do not post vulnerabilities or account data in public issues.
 

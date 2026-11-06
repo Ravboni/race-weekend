@@ -55,8 +55,29 @@ profile_check() {
     case "$(uname -m)" in armv7l|aarch64) ;; *) REASON=unsupported-platform; return 1;; esac
     model=$(luna-send -n 1 -w 2000 luna://com.webos.service.tv.systemproperty/getSystemInfo '{"keys":["modelName"]}' </dev/null 2>/dev/null) || { REASON=identity-unavailable; return 1; }
     printf '%s' "$model" | grep -Eq '"modelName" *: *"OLED[0-9][0-9]C9[A-Za-z0-9. -]*"' || { REASON=unsupported-model; return 1; }
-    [ -r "$PACKAGE/profile.sha256" ] && sha256sum -c "$PACKAGE/profile.sha256" >/dev/null 2>&1 || { REASON=unsupported-firmware; return 1; }
+    [ -r "$PACKAGE/profile.sha256" ] || { REASON=unsupported-firmware; return 1; }
+    # Hashing the large browser library on every status/begin is slow. Reuse a
+    # verification recorded in the root-owned runtime while every pinned file
+    # keeps its device/inode/size/mtime and the pinned list itself is unchanged.
+    signature=$(profile_signature) || signature=
+    if [ -n "$signature" ] && owned_runtime && [ -f "$RUNTIME/profile.ok" ] && [ ! -L "$RUNTIME/profile.ok" ] &&
+        [ "$(cat "$RUNTIME/profile.ok" 2>/dev/null)" = "$signature" ]; then
+        SUPPORTED=true; return 0
+    fi
+    sha256sum -c "$PACKAGE/profile.sha256" >/dev/null 2>&1 || { REASON=unsupported-firmware; return 1; }
+    if [ -n "$signature" ] && owned_runtime; then
+        (umask 077; printf '%s\n' "$signature" > "$RUNTIME/profile.ok.next" && mv "$RUNTIME/profile.ok.next" "$RUNTIME/profile.ok") 2>/dev/null || :
+    fi
     SUPPORTED=true
+}
+profile_signature() {
+    list=$(sha256sum "$PACKAGE/profile.sha256" 2>/dev/null | cut -d ' ' -f 1) && [ -n "$list" ] || return 1
+    printf '%s' "$list"
+    for file in $(awk '{print $2}' "$PACKAGE/profile.sha256"); do
+        [ -f "$file" ] && [ ! -L "$file" ] || return 1
+        identity=$(stat -c '%d:%i:%s:%Y' "$file" 2>/dev/null) && [ -n "$identity" ] || return 1
+        printf ' %s' "$identity"
+    done
 }
 mapped() {
     pids=$(pidof "$1" 2>/dev/null) || return 1
@@ -275,6 +296,9 @@ watch)
             unlock_session
         fi
         if ! mapped WebAppMgr librw-pip-wam.so || ! mapped AcbService librw-pip-acb.so; then
+            # The hooked AcbService runs outside upstart: if it died, start the
+            # stock job so the TV is never left without its media broker.
+            if ! pidof AcbService >/dev/null 2>&1; then initctl start AcbService >/dev/null 2>&1 || :; fi
             if lock_session; then clear_session; reset_routes; unlock_session; fi
             exit 0
         fi
@@ -289,7 +313,7 @@ restore)
     done
     rm -f "$RUNTIME/activating" "$RUNTIME/acb.env" "$RUNTIME/lease" "$RUNTIME/lease.next" "$RUNTIME/watchdog.pid" \
         "$RUNTIME/lib/librw-pip-wam.so" "$RUNTIME/lib/librw-pip-acb.so" "$RUNTIME/WebAppMgr.conf" \
-        "$RUNTIME/session.lock" "$RUNTIME/lifecycle.lock" "$RUNTIME/restore-wam" \
+        "$RUNTIME/session.lock" "$RUNTIME/lifecycle.lock" "$RUNTIME/restore-wam" "$RUNTIME/profile.ok" "$RUNTIME/profile.ok.next" \
         "$RUNTIME/control.sh" "$RUNTIME/hooks.sha256" "$RUNTIME/activation.log" "$RUNTIME/acb.log" "$RUNTIME/watchdog.log" "$RUNTIME/restoration.log"
     rmdir "$RUNTIME/lib" "$RUNTIME" 2>/dev/null || :
     luna-send -n 1 -w 3000 luna://com.webos.applicationManager/launch '{"id":"com.ravboni.raceweekend"}' </dev/null >/dev/null 2>&1 || :

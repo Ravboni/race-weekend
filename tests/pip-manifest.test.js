@@ -7,7 +7,8 @@ function period(extra) { return '<Period><AdaptationSet contentType="video" mime
 function filter(xml, height) { return manifest.filter(xml, source, {maxHeight:height||720,maxFrameRate:50}); }
 test('caps AVC video and preserves timing and every audio language', () => {
  const result=filter(mpd(period()));
- assert.equal(result.height,720); assert.match(result.xml,/id="hd"/); assert.doesNotMatch(result.xml,/id="full"|id="sd"/);
+ // The compatible ladder below the cap stays available for native ABR.
+ assert.equal(result.height,720); assert.match(result.xml,/id="hd"/); assert.match(result.xml,/id="sd"/); assert.doesNotMatch(result.xml,/id="full"/);
  assert.match(result.xml,/lang="por"/); assert.match(result.xml,/lang="eng"/); assert.match(result.xml,/<S t="0" d="1000" r="5"/);
  assert.match(result.xml,/<BaseURL>https:\/\/f1prodlive.akamaized.net\/out\/v1\/event\/<\/BaseURL>/);
 });

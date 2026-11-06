@@ -2356,6 +2356,27 @@ function renderCbcsSupport(host) {
     apply.dataset.action = "apply-hd-fix";
     host.append(apply);
   }
+  // Only this repair's own overlay can be removed; legacy/external ones are kept.
+  if (fix?.active && fix.canDisable === true && state.tvCapabilities.root === "available") {
+    host.append(element("p", "player-options-note", "Disabling restores the original library and turns off the boot hook. Restart Race Weekend afterward."));
+    const disable = playerOption(state.cbcsApplying ? "Disabling HD fix…" : "Disable HD fix", false, disableCbcsFix, state.cbcsApplying || Boolean(state.pip));
+    disable.dataset.action = "disable-hd-fix";
+    host.append(disable);
+  }
+}
+
+async function disableCbcsFix() {
+  const fix = state.tvCapabilities?.cbcs;
+  if (state.cbcsApplying || state.pip || !fix?.active || fix.canDisable !== true || state.tvCapabilities.root !== "available") return;
+  state.cbcsApplying = true;
+  renderTvSupport();
+  try {
+    const result = await state.pipClient.cbcsCommand("disable");
+    state.tvCapabilities.cbcs = result;
+    if (result.active) throw new Error("The HD fix could not be disabled on this TV.");
+    showToast("HD fix disabled. Close and reopen Race Weekend before playing.");
+  } catch (error) { showToast(error.message); }
+  finally { state.cbcsApplying = false; renderTvSupport(); }
 }
 
 async function applyCbcsFix() {
@@ -2518,6 +2539,15 @@ function changePipQuality(height) {
   renderPlayerSources();
 }
 
+// webOS 6+ can still play the original MPD under native limits when the local
+// service cannot listen (for example, the legacy root bridge holds its port).
+async function preparePipManifest(url, role, height) {
+  try { return await state.pipClient.prepare(url, role, height); } catch (error) {
+    if (state.tvCapabilities?.pip.mode === "native" && error?.serviceUnavailable) return null;
+    throw error;
+  }
+}
+
 function nativeLimits(height) {
   return { maxWidth: Math.ceil(height * 16 / 9), maxHeight: height, maxFrameRate: 50 };
 }
@@ -2575,6 +2605,10 @@ function seekPipToMain(main) {
   const pip = state.pip;
   const playing = !main.paused;
   const position = Math.floor(main.currentTime / 2) * 2;
+  // One coordinated attempt per position: feeds whose segment boundaries cannot
+  // align within the tolerance keep their drift instead of re-seeking forever.
+  if (pip.syncTarget !== undefined && Math.abs(position - pip.syncTarget) < 10) return;
+  pip.syncTarget = position;
   pip.syncing = true;
   main.pause();
   video.pause();
@@ -2743,7 +2777,7 @@ async function startPipVideo() {
   try {
     stream = await state.session.play(contentId, pip.channelId);
     if (state.pip !== pip || seq !== pip.seq) return;
-    if (stream.drmType === "clear") prepared = await state.pipClient.prepare(stream.manifest, "sub", pipQuality());
+    if (stream.drmType === "clear") prepared = await preparePipManifest(stream.manifest, "sub", pipQuality());
   } catch (_error) { stream = null; }
   if (state.pip !== pip || seq !== pip.seq) {
     if (prepared) state.pipClient.release(prepared.id);
@@ -2778,12 +2812,15 @@ async function startPipVideo() {
   video.addEventListener("error", failed);
   source.addEventListener("error", failed);
   // The main feed moved on while this one loaded: catch up once it plays.
-  video.addEventListener("playing", () => {
+  // Chrome 53 (webOS 4) ignores addEventListener's `once`; remove it explicitly.
+  const firstPlaying = () => {
+    video.removeEventListener("playing", firstPlaying);
     if (state.pip !== pip || pip.box !== box) return;
     window.clearTimeout(pip.loadTimer);
     if (main.paused) { video.pause(); return; }
     seekPipToMain(main);
-  }, { once: true });
+  };
+  video.addEventListener("playing", firstPlaying);
   video.addEventListener("canplay", () => {
     if (state.pip !== pip || pip.box !== box) return;
     window.clearTimeout(pip.loadTimer);
@@ -2808,6 +2845,7 @@ function removePipVideo(pip, { resumeMain = true } = {}) {
   if (pip.manifest) { state.pipClient.release(pip.manifest.id); pip.manifest = null; }
   const box = pip.box;
   pip.box = null;
+  pip.syncTarget = undefined;
   if (pip.cancelSync) { pip.cancelSync(resumeMain); pip.cancelSync = null; }
   if (!box) return;
   const video = box.querySelector("video");
@@ -3006,17 +3044,17 @@ async function startPlayback(item, options = {}) {
         try {
           await beginPipSession(pip);
           if (playbackSeq !== state.playbackSeq || state.pip !== pip || state.currentView !== "player") return;
-          prepared = await state.pipClient.prepare(stream.manifest, "main", state.tvCapabilities.pip.mainHeight);
+          prepared = await preparePipManifest(stream.manifest, "main", state.tvCapabilities.pip.mainHeight);
           if (playbackSeq !== state.playbackSeq || state.pip !== pip || state.currentView !== "player") {
-            state.pipClient.release(prepared.id);
+            state.pipClient.release(prepared?.id);
             return;
           }
           state.mainManifest = prepared;
-          startNativePlayback(video, { ...stream, manifest: prepared.url }, { resumeAt: options.resumeAt, audioLanguage });
+          startNativePlayback(video, { ...stream, manifest: prepared ? prepared.url : stream.manifest }, { resumeAt: options.resumeAt, audioLanguage });
           return;
         } catch (_error) {
           if (prepared) state.pipClient.release(prepared.id);
-          if (playbackSeq !== state.playbackSeq || state.currentView !== "player") return;
+          if (playbackSeq !== state.playbackSeq || state.currentView !== "player" || document.hidden) return;
           showToast("Could not open compatible picture-in-picture. Playing one feed.");
         }
       } else showToast(PIP_DRM_MESSAGE);
@@ -3620,6 +3658,8 @@ document.addEventListener("DOMContentLoaded", () => {
   document.addEventListener("visibilitychange", () => {
     if (document.hidden && state.pip) {
       state.pipHiddenResume = { resumeAt: resumePosition(), ...currentTrackLanguages() };
+      // Invalidate an opening in flight so it cannot fall back to the browser player while hidden.
+      state.playbackSeq += 1;
       closePip({ restart: false });
       stopPlayback();
     } else if (!document.hidden && !state.pip) {

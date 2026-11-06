@@ -123,7 +123,10 @@
       retainService();
       return call(SERVICE + 'pipPrepare', {url: url, role: role, maxHeight: height, maxFrameRate: 50}, 25000).then(function (result) {
         if (!result || result.returnValue !== true || !result.id || !/^http:\/\/127\.0\.0\.1:18741\/pip\/[a-f0-9]+\.mpd$/.test(result.url || '')) {
-          throw new Error('Could not prepare a compatible PiP feed.');
+          var error = new Error('Could not prepare a compatible PiP feed.');
+          // The local listener is unavailable (e.g. port held by the legacy root bridge).
+          error.serviceUnavailable = Boolean(result && result.errorText === 'Picture-in-picture service unavailable.');
+          throw error;
         }
         return result;
       });

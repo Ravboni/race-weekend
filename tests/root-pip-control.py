@@ -84,6 +84,18 @@ esac''')
     assert code == 1 and status['reason'] == 'unsupported-firmware'
     status, code = call('status', TEST_ARCH='aarch64')
     assert code == 0 and status['ready'] and not status['active']
+    # A verified profile is reused only while every pinned file keeps its identity.
+    pinned = temp / 'pinned-libcbe.so'
+    pinned.write_bytes(b'firmware')
+    (package / 'profile.sha256').write_text('0' * 64 + '  ' + str(pinned) + '\n')
+    status, code = call('status')
+    assert code == 0 and status['ready'] and (runtime / 'profile.ok').exists()
+    status, code = call('status', TEST_PROFILE_FAIL='1')
+    assert code == 0 and status['ready'], 'unchanged verified profile was rehashed'
+    pinned.write_bytes(b'updated firmware')
+    status, code = call('status', TEST_PROFILE_FAIL='1')
+    assert not status['ready'] and status['reason'] == 'unsupported-firmware'
+    call('status')
     status, code = call('begin', TEST_FOREGROUND='other.app')
     assert code == 1 and status['reason'] == 'not-foreground' and not (runtime / 'lease').exists()
     status, code = call('begin', TEST_DUAL='false')
@@ -177,4 +189,9 @@ esac''')
     (proc / 'mounts').write_text('fixture ' + str(conf) + ' none rw 0 0\n')
     failed_unmount = subprocess.run(['sh', str(recovery)], env=dict(os.environ, TEST_UNMOUNT_FAIL='1'), capture_output=True, text=True)
     assert failed_unmount.returncode == 1 and running.exists()
+    # A dead hooked AcbService (outside upstart) must not leave the TV without one.
+    events.write_text('')
+    watch = subprocess.run(['sh', str(script), 'watch'], capture_output=True, text=True, timeout=10)
+    assert watch.returncode == 0 and not watch.stderr
+    assert 'start AcbService' in events.read_text(), 'watchdog left the TV without AcbService'
 print('Control protocol: unsupported/nonroot refusal, read-only status, foreground, dual-mode failure, lease renewal/expiry/end and stale-build rejection passed.')

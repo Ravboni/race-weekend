@@ -10,6 +10,8 @@ var manifest = require("./pip-manifest");
 // bounded and disappears with the unprivileged app service.
 var MAX_SESSIONS = 8;
 var FETCH_MS = 12000;
+// A transient live refresh failure may reuse the last filtered manifest briefly.
+var STALE_MS = 20000;
 
 // No caller-controlled headers, cookies or credentials are forwarded. Each
 // redirect is revalidated; capability URLs and upstream tokens stay in memory.
@@ -102,9 +104,10 @@ module.exports = function createPip(options) {
         catch (failure) { pending -= 1; rejected(message, failure.message); return; }
         listening(function (ok) {
           pending -= 1;
-          if (!ok || requestedGeneration !== generation) { rejected(message, "Picture-in-picture service unavailable."); return; }
+          if (requestedGeneration !== generation) { rejected(message, "Picture-in-picture request cancelled."); return; }
+          if (!ok) { rejected(message, "Picture-in-picture service unavailable."); return; }
           var id = crypto.randomBytes(32).toString("hex");
-          sessions[id] = { url: url.href, maxHeight: maxHeight, maxFrameRate: maxFrameRate, dynamic: filtered.dynamic, xml: filtered.xml, refreshing: false };
+          sessions[id] = { url: url.href, maxHeight: maxHeight, maxFrameRate: maxFrameRate, dynamic: filtered.dynamic, xml: filtered.xml, updatedAt: Date.now(), refreshing: false };
           message.respond({ returnValue: true, id: id, url: "http://127.0.0.1:" + options.port + "/pip/" + id + ".mpd", height: filtered.height });
         });
       });
@@ -135,21 +138,29 @@ module.exports = function createPip(options) {
       res.writeHead(200, { "Content-Type": "application/dash+xml; charset=utf-8", "Content-Length": Buffer.byteLength(xml, "utf8") });
       res.end(req.method === "HEAD" ? undefined : xml);
     }
+    function recent() { return Date.now() - session.updatedAt < STALE_MS; }
     if (!session.dynamic || req.method === "HEAD") { send(session.xml); return true; }
-    if (session.refreshing) { res.writeHead(503); res.end(); return true; }
+    if (session.refreshing) {
+      if (recent()) send(session.xml); else { res.writeHead(503); res.end(); }
+      return true;
+    }
     session.refreshing = true;
     var cancelled = false;
     var cancel = fetchManifest(session.url, function (error, upstream) {
       session.refreshing = false;
       session.cancel = null;
       if (cancelled) return;
-      if (error) { res.writeHead(502); res.end(); return; }
+      if (error) {
+        if (recent()) send(session.xml); else { res.writeHead(502); res.end(); }
+        return;
+      }
       var filtered;
       try { filtered = manifest.filter(upstream.xml, upstream.url, session); }
       catch (_error) { res.writeHead(502); res.end(); return; }
       // Keep refreshing even if the event just became static: the local URL
       // remains authoritative and cannot ever reveal the original full ladder.
       session.xml = filtered.xml;
+      session.updatedAt = Date.now();
       send(filtered.xml);
     });
     session.cancel = cancel;
