@@ -52,38 +52,74 @@
     return bridge; // keep a reference alive to hold subscriptions open
   }
 
-  // Resolves to true once the proxy is listening, or false if it never comes
-  // up (then F1 requests fall back to going direct — no worse than no shim).
-  var readyResolve;
-  var ready = new Promise(function (resolve) { readyResolve = resolve; });
-  var settled = false;
+  // Proxy state. Right after a TV power cycle webOS can take well over 4 s to
+  // spawn the service, so a start that answers late must still switch the
+  // proxy on, and a start that failed is retried by the next F1 request (so
+  // "Try again" recovers without relaunching the app).
+  var START_WAIT_MS = 20000;      // how long F1 requests wait for a pending start
+  var RETRY_COOLDOWN_MS = 3000;   // minimum gap before retrying a failed start
   var proxyUp = false;
   var sessionToken = null;
-  function settle(up) { if (!settled) { settled = true; proxyUp = !!up; readyResolve(!!up); } }
+  var startPending = false;       // a start call is outstanding (never overlap:
+  var startDeadline = 0;          // each start rotates the service's token)
+  var lastStartFailure = 0;
+  var waiters = [];
 
   function isSessionToken(value) { return typeof value === "string" && /^[a-f0-9]{64}$/.test(value); }
+
+  function notifyWaiters(up) {
+    var pending = waiters;
+    waiters = [];
+    pending.forEach(function (notify) { notify(up); });
+  }
 
   // Hold a keepalive subscription for the app's lifetime so the service does
   // not idle-exit (webos-service quits ~5s after its activity count hits zero).
   var keepAlive = null;
-  lunaCall("start", {}, function (payload) {
-    if (payload && payload.listening && payload.started && isSessionToken(payload.token)) {
-      sessionToken = payload.token;
-      keepAlive = lunaCall("keepalive", { subscribe: true }, function () {});
-      settle(true);
-    } else {
-      settle(false);
-    }
-  });
-  // Don't let a missing/broken service hang every F1 request forever.
-  setTimeout(function () { settle(false); }, 4000);
+  function requestStart() {
+    if (proxyUp || startPending) return;
+    startPending = true;
+    startDeadline = Date.now() + START_WAIT_MS;
+    lunaCall("start", {}, function (payload) {
+      startPending = false;
+      if (proxyUp) return;
+      if (payload && payload.listening && payload.started && isSessionToken(payload.token)) {
+        sessionToken = payload.token;
+        proxyUp = true;
+        keepAlive = lunaCall("keepalive", { subscribe: true }, function () {});
+        notifyWaiters(true);
+      } else {
+        lastStartFailure = Date.now();
+        notifyWaiters(false);
+      }
+    });
+  }
+
+  // Resolves to true once the proxy is listening, or false if it is not up
+  // (then the request goes direct — no worse than no shim). Never waits past
+  // the pending start's deadline, so a missing/broken service cannot hang
+  // every F1 request forever.
+  function whenProxyReady() {
+    if (proxyUp) return Promise.resolve(true);
+    if (!startPending && Date.now() - lastStartFailure >= RETRY_COOLDOWN_MS) requestStart();
+    var remaining = startPending ? startDeadline - Date.now() : 0;
+    if (remaining <= 0) return Promise.resolve(false);
+    return new Promise(function (resolve) {
+      var done = false;
+      function finish(up) { if (!done) { done = true; resolve(up); } }
+      waiters.push(finish);
+      setTimeout(function () { finish(false); }, remaining);
+    });
+  }
+
+  requestStart();
   window.addEventListener("beforeunload", function () { keepAlive = null; });
 
   var originalFetch = window.fetch;
   window.fetch = function (input, init) {
     var isPlain = typeof input === "string" || input instanceof URL;
     if (!isPlain || !isProxyableURL(input)) return originalFetch.call(this, input, init);
-    return ready.then(function (up) {
+    return whenProxyReady().then(function (up) {
       var target = up ? proxyURLFor(input, sessionToken) : null;
       return originalFetch.call(window, target || input, init);
     });
